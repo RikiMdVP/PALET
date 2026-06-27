@@ -1,0 +1,48 @@
+---
+
+## Seed Prompt: Inmigración y Precios de Vivienda
+
+---
+
+**TEMA CENTRAL DE LA REVISIÓN**
+
+Esta revisión de alcance (*scoping review*) tiene como objeto examinar la literatura académica sobre el efecto de la inmigración en los mercados residenciales, tanto en el mercado de compra (precio de la vivienda en propiedad) como en el mercado de alquiler (rentas residenciales). El fenómeno de interés abarca los mecanismos por los que los flujos migratorios —internacionales e internos— modifican la demanda de vivienda, la oferta disponible, y el equilibrio de precios en los mercados locales.
+
+**OBJETIVO PRINCIPAL DE LA REVISIÓN**
+
+El objetivo es mapear el estado del arte sobre la relación entre inmigración y precios de vivienda, identificar los principales hallazgos empíricos y enfoques metodológicos utilizados, y detectar lagunas en la literatura. Se busca tanto evidencia causal como descriptiva, incluyendo estudios que analicen efectos heterogéneos por tipo de inmigrante, nivel de renta, contexto urbano/rural, o características del mercado local.
+
+**PREGUNTAS DE INVESTIGACIÓN (RQ)**
+
+- **RQ1.** ¿Qué efecto tiene la inmigración sobre los precios de compra de vivienda a nivel local, y qué factores moderan dicho efecto (densidad urbana, elasticidad de oferta, tipo de inmigrante)?
+- **RQ2.** ¿En qué medida la inmigración afecta a los precios del alquiler residencial, y difiere este efecto del observado en el mercado de compra?
+- **RQ3.** ¿A través de qué mecanismos (presión sobre la demanda, efectos de filtrado, segregación residencial, cambios en la oferta) opera el impacto migratorio sobre el mercado de la vivienda?
+- **RQ4.** ¿Qué metodologías empíricas se han utilizado para identificar el efecto causal de la inmigración sobre los precios de vivienda, y cuáles han demostrado ser más robustas?
+- **RQ5.** ¿Existen diferencias en el impacto según el origen, cualificación o estatus legal del inmigrante, o según las características del municipio o región de destino?
+- **RQ6.** ¿Qué recomendaciones de política de vivienda y/o migratoria formula la literatura para gestionar los efectos de la inmigración sobre el acceso a la vivienda?
+
+**ÁMBITO GEOGRÁFICO**
+
+Sin restricción geográfica predefinida, aunque se priorizarán estudios referidos a países de la Unión Europea, Estados Unidos, Canadá, Australia y Reino Unido, dado que cuentan con mayor evidencia empírica disponible. Se aceptarán comparativas entre países o ciudades.
+
+**PERÍODO TEMPORAL**
+
+Desde el año 2000 hasta la actualidad. El corte en 2000 responde al notable incremento de flujos migratorios internacionales documentado desde ese período y a la mayor disponibilidad de microdatos para análisis empírico riguroso.
+
+**DISCIPLINAS Y ENFOQUES TEÓRICOS**
+
+El enfoque predominante es económico (economía urbana, economía de la vivienda, economía de la migración), aunque se considerarán también estudios de sociología urbana, geografía económica y ciencias políticas cuando aporten evidencia empírica relevante sobre precios. Se priorizan estudios cuantitativos con identificación causal (variables instrumentales, diferencias en diferencias, regresión discontinua), pero también se incluirán revisiones sistemáticas y estudios de caso bien fundamentados.
+
+**BASES DE DATOS Y TIPO DE DOCUMENTOS**
+
+Búsqueda en OpenAlex y PubMed como bases principales. Se priorizarán artículos publicados en revistas académicas revisadas por pares (*peer-reviewed journals*). Se excluirán informes de opinión sin respaldo empírico, documentos de trabajo (*working papers*) no publicados posteriormente en revista, y literatura gris no referenciada.
+
+**IDIOMA**
+
+Se aceptarán publicaciones en inglés y español.
+
+**ACLARACIONES ADICIONALES**
+
+Se excluirán expresamente estudios que traten el efecto de la vivienda sobre la inmigración (causalidad inversa) sin considerar la dirección aquí especificada. No se restringirá por tipo de vivienda (pública, privada, social), pero se valorará que los estudios distingan entre submercados cuando sea posible. Se evitarán términos excesivamente genéricos como "housing market" sin combinación con términos migratorios.
+
+---

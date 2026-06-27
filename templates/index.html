@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PALET</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <!-- ═══ MOBILE OVERLAY ═══ -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-wordmark">Palet</span>
+                <span class="logo-dot"></span>
+            </div>
+            <span class="logo-subtitle">Literature Review Engine</span>
+        </div>
+
+        <div class="sidebar-nav">
+            <button class="nav-item active" data-view="dashboard" onclick="navigateTo('dashboard')">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                </span>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-item" data-view="new-review" onclick="navigateTo('new-review')">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                </span>
+                <span>Nueva revisión</span>
+            </button>
+            <button class="nav-item" data-view="execution" onclick="navigateTo('execution')">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                </span>
+                <span>Ejecución</span>
+                <span class="sidebar-pulse" id="sidebar-pulse"></span>
+            </button>
+            <button class="nav-item" data-view="history" onclick="navigateTo('history')">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                </span>
+                <span>Historial</span>
+            </button>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">
+                <svg id="theme-icon-moon" viewBox="0 0 24 24">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                <svg id="theme-icon-sun" viewBox="0 0 24 24" style="display:none">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+            </button>
+            <div class="sidebar-meta">ISABEL Project</div>
+            <div class="sidebar-meta dim">Grant 101177687</div>
+        </div>
+    </nav>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="content">
+
+        <!-- Mobile header -->
+        <div class="mobile-header">
+            <button class="hamburger-btn" onclick="openMobileSidebar()">
+                <svg viewBox="0 0 24 24">
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+            </button>
+            <span class="logo-wordmark" style="font-size:22px;">Palet<span class="logo-dot"
+                    style="width:5px;height:5px;"></span></span>
+            <div style="width:40px;"></div>
+        </div>
+
+        <!-- ══ DASHBOARD ══ -->
+        <section id="view-dashboard" class="view active">
+            <div class="view-header">
+                <h1>Dashboard</h1>
+                <button class="btn btn-primary" onclick="navigateTo('new-review')">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Nueva revisión
+                </button>
+            </div>
+
+            <div class="stats-grid" id="dashboard-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total-runs">—</div>
+                    <div class="stat-label">Ejecuciones totales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-last-papers">—</div>
+                    <div class="stat-label">Papers (última ejecución)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-last-rqs">—</div>
+                    <div class="stat-label">RQs (última ejecución)</div>
+                </div>
+            </div>
+
+            <!-- Sparkline chart -->
+            <div class="sparkline-container" id="dashboard-sparkline" style="display:none;">
+                <div class="sparkline-title">Papers por ejecución</div>
+                <div class="sparkline-chart" id="sparkline-chart"></div>
+            </div>
+
+            <!-- Enriched last run card -->
+            <div id="dashboard-last-run" style="display: none;"></div>
+
+            <div class="section-header">
+                <h2>Ejecuciones recientes</h2>
+            </div>
+            <div id="dashboard-recent" class="runs-list">
+                <!-- Skeleton loading -->
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        </section>
+
+        <!-- ══ NUEVA REVISIÓN ══ -->
+        <section id="view-new-review" class="view">
+            <div class="view-header">
+                <h1>Nueva revisión sistemática</h1>
+            </div>
+
+            <form id="arq-form" onsubmit="return false;">
+                <div class="form-layout">
+                    <!-- Main column -->
+                    <div class="form-main">
+                        <div class="form-group">
+                            <label for="seed-prompt">Seed Prompt</label>
+                            <textarea id="seed-prompt" rows="12"
+                                placeholder="Describe tu tema de investigación en lenguaje natural. Por ejemplo:&#10;&#10;Quiero investigar el impacto de la inteligencia artificial en el mercado laboral europeo, con foco en la creación y destrucción de empleo en sectores como manufactura, servicios y tecnología. Me interesan estudios empíricos publicados desde 2015 que analicen tanto los efectos positivos como negativos de la automatización y la digitalización en el empleo."></textarea>
+                            <div class="form-hint">
+                                <span id="char-count">0 caracteres</span>
+                                <button type="button" class="btn-link" onclick="showSeedPrompts()">Cargar prompt
+                                    existente</button>
+                            </div>
+                        </div>
+
+                        <!-- Cost estimate -->
+                        <div class="cost-card" id="cost-estimate" style="display: none;">
+                            <div class="cost-header">
+                                <span class="cost-title">Coste estimado</span>
+                                <span class="cost-badge">aproximado</span>
+                            </div>
+                            <div class="cost-grid">
+                                <div>
+                                    <div class="cost-value" id="cost-usd">$0.00</div>
+                                    <div class="cost-label">USD</div>
+                                </div>
+                                <div>
+                                    <div class="cost-value" id="cost-eur">€0.00</div>
+                                    <div class="cost-label">EUR</div>
+                                </div>
+                                <div>
+                                    <div class="cost-value" id="cost-tokens">0</div>
+                                    <div class="cost-label">tokens totales</div>
+                                </div>
+                            </div>
+                            <div class="cost-note">
+                                Basado en precios de Claude Sonnet 4.5 ($3/MTok input, $15/MTok output).
+                                <a href="https://docs.anthropic.com" target="_blank">Verificar precios actuales</a>.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Parameters sidebar -->
+                    <div class="form-sidebar">
+                        <h3>Parámetros</h3>
+
+                        <div class="param-group">
+                            <div class="param-group-title">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                </svg>
+                                Resultados
+                            </div>
+                            <div class="form-group">
+                                <label for="max-results">Máx. papers por BD</label>
+                                <input type="number" id="max-results" value="20" min="1" max="1000">
+                            </div>
+                        </div>
+
+                        <div class="param-group">
+                            <div class="param-group-title">
+                                <svg viewBox="0 0 24 24">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                </svg>
+                                Rango temporal
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="min-year">Año mín.</label>
+                                    <input type="number" id="min-year" value="1980" min="1900" max="2026">
+                                </div>
+                                <div class="form-group">
+                                    <label for="max-year">Año máx.</label>
+                                    <input type="number" id="max-year" value="2025" min="1900" max="2026">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="param-group">
+                            <div class="param-group-title">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                Tipos de documento
+                            </div>
+                            <div class="checkbox-group">
+                                <label class="checkbox"><input type="checkbox" name="doc-type" value="article" checked>
+                                    Article</label>
+                                <label class="checkbox"><input type="checkbox" name="doc-type" value="review" checked>
+                                    Review</label>
+                                <label class="checkbox"><input type="checkbox" name="doc-type" value="conference_paper">
+                                    Conference paper</label>
+                                <label class="checkbox"><input type="checkbox" name="doc-type" value="book_chapter">
+                                    Book chapter</label>
+                            </div>
+                        </div>
+
+                        <div class="param-group">
+                            <div class="param-group-title">
+                                <svg viewBox="0 0 24 24">
+                                    <ellipse cx="12" cy="5" rx="9" ry="3" />
+                                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                                </svg>
+                                Bases de datos
+                            </div>
+                            <div class="checkbox-group">
+                                <label class="checkbox"><input type="checkbox" name="database" value="openalex" checked>
+                                    OpenAlex</label>
+                                <label class="checkbox"><input type="checkbox" name="database" value="pubmed" checked>
+                                    PubMed</label>
+                                <label class="checkbox"><input type="checkbox" name="database" value="scopus" disabled>
+                                    Scopus <span class="tag-disabled">pendiente token</span></label>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 4px;">
+                            <label class="checkbox toggle-checkbox">
+                                <input type="checkbox" id="auto-accept" checked>
+                                <span>Auto-accept</span>
+                            </label>
+                            <div class="form-hint" style="margin-top:4px;">Si está desactivado, se detiene tras cada
+                                fase para aprobación.</div>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <button type="button" class="btn btn-launch btn-full" onclick="launchPipeline()">
+                            <svg viewBox="0 0 24 24">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            Iniciar revisión
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- ══ EJECUCIÓN ══ -->
+        <section id="view-execution" class="view">
+            <div class="view-header">
+                <h1>Ejecución del pipeline</h1>
+                <span class="exec-timer-display" id="exec-timer">0s</span>
+            </div>
+
+            <div id="exec-idle" class="empty-state-large">
+                <div class="empty-state-illustration">
+                    <svg viewBox="0 0 80 80">
+                        <rect x="10" y="18" width="60" height="46" rx="4" stroke-width="1.5" />
+                        <line x1="10" y1="30" x2="70" y2="30" stroke-width="1.5" />
+                        <circle cx="18" cy="24" r="2" />
+                        <circle cx="26" cy="24" r="2" />
+                        <circle cx="34" cy="24" r="2" />
+                        <line x1="22" y1="40" x2="58" y2="40" stroke-width="1.5" />
+                        <line x1="22" y1="48" x2="48" y2="48" stroke-width="1.5" />
+                        <line x1="22" y1="56" x2="38" y2="56" stroke-width="1.5" />
+                    </svg>
+                </div>
+                <h3>Sin pipeline en ejecución</h3>
+                <p>Configura y lanza una nueva revisión sistemática para comenzar.</p>
+                <button class="btn btn-primary" onclick="navigateTo('new-review')">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Iniciar nueva revisión
+                </button>
+            </div>
+
+            <div id="exec-active" style="display: none;">
+                <!-- Phase stepper -->
+                <div class="phase-stepper" id="phase-stepper"></div>
+
+                <!-- Current phase status -->
+                <div class="exec-status" id="exec-status">
+                    <div class="spinner">
+                        <div class="spinner-dot"></div>
+                        <div class="spinner-dot"></div>
+                        <div class="spinner-dot"></div>
+                    </div>
+                    <span id="exec-message">Iniciando...</span>
+                </div>
+
+                <!-- Approval buttons -->
+                <div class="approval-bar" id="approval-bar" style="display: none;">
+                    <span class="approval-text">Aprobar el resultado de esta fase?</span>
+                    <button class="btn btn-approve" onclick="approvePhase()">Aprobar</button>
+                    <button class="btn btn-reject" onclick="rejectPhase()">Rechazar</button>
+                </div>
+
+                <!-- Completed phases log -->
+                <div class="phases-log" id="phases-log"></div>
+
+                <!-- Result card -->
+                <div class="result-card" id="result-card" style="display: none;">
+                    <div class="result-icon">
+                        <svg viewBox="0 0 52 52">
+                            <circle cx="26" cy="26" r="24" />
+                            <path d="M16 27l6 6 14-14" />
+                        </svg>
+                    </div>
+                    <h2>Pipeline completado</h2>
+                    <p id="result-message"></p>
+                    <div class="result-actions">
+                        <button class="btn btn-primary" id="btn-download-pdf" onclick="downloadResult()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            Descargar PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Error card -->
+                <div class="error-card" id="error-card" style="display: none;">
+                    <div class="error-icon">
+                        <svg viewBox="0 0 52 52">
+                            <circle cx="26" cy="26" r="24" />
+                            <line x1="18" y1="18" x2="34" y2="34" />
+                            <line x1="34" y1="18" x2="18" y2="34" />
+                        </svg>
+                    </div>
+                    <h2>Error en el pipeline</h2>
+                    <p id="error-message"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══ HISTORIAL ══ -->
+        <section id="view-history" class="view">
+            <div class="view-header">
+                <h1>Historial de ejecuciones</h1>
+            </div>
+            <div id="history-list" class="runs-list">
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ═══ MODAL: Seed prompts ═══ -->
+    <div class="modal-overlay" id="modal-seeds" onclick="closeSeedModal(event)">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Seed prompts disponibles</h2>
+                <button class="modal-close" onclick="closeSeedModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="seeds-list">
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+
+</html>

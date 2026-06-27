@@ -1,0 +1,12 @@
+I want to conduct a systematic review and empirical synthesis on how digital environments and echo chambers interact with populist dynamics to shape the winner–loser gap in democratic attitudes among young citizens in Europe.
+
+Dimensions of analysis
+	1.	The populist winner–loser gap: How electoral victories or defeats of populist vs. non-populist parties influence citizens’ satisfaction with democracy and institutional trust.
+	2.	Youth and volatility: How younger cohorts display higher volatility in democratic support, particularly after electoral losses.
+	3.	Digital echo chambers: Whether digital intensity (online political participation, social media use) amplifies the emotional and cognitive asymmetries between winners and losers.
+	4.	Regional context: The moderating role of regional digital climate, populist vote share, and economic inequality in shaping these effects.
+	5.	Causal mechanisms: How exposure to populist discourse online may turn individual electoral defeat into broader democratic disaffection.
+	6.	Policy relevance: Implications for democratic resilience, media literacy, and youth participation in the EU.
+	7.	Knowledge gaps: Need for integrated frameworks linking digitalization, populism, and regional democratic health.
+
+Scope: European Union, with a focus on regional (NUTS-2) and multilevel analyses combining individual (ESS Round 10) and contextual (Eurostat, CHES, PopuList, ParlGov, GPS, and digital intensity) data.

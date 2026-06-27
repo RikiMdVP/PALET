@@ -1,0 +1,22 @@
+# 1. Salir del entorno roto
+deactivate
+
+# 2. Borrar entorno viejo
+rm -rf /Users/ricardomvp/Desktop/Doctorado/Revision\ Bibliografia\ con\ Fernando/palet/palet_env
+
+# 3. Crear entorno nuevo
+/opt/homebrew/bin/python3 -m venv /Users/ricardomvp/Desktop/Doctorado/Revision\ Bibliografia\ con\ Fernando/palet/palet_env
+
+# 4. Activar
+source /Users/ricardomvp/Desktop/Doctorado/Revision\ Bibliografia\ con\ Fernando/palet/palet_env/bin/activate
+
+# 5. Instalar todas las dependencias
+pip install anthropic fastapi uvicorn pandas numpy requests python-multipart aiofiles networkx matplotlib scipy jinja2 python-dotenv
+
+# 6. Lanzar PALET
+uvicorn app:app --reload --port 8000
+
+
+source palet_env/bin/activate
+
+uvicorn app:app --reload --port 8000

@@ -1,0 +1,8 @@
+Quiero realizar un análisis empírico y una revisión teórica sobre la distribución espacial de la innovación en Europa, usando las patentes como indicador. El objetivo es ver cómo se concentra la innovación tecnológica, comprobar empíricamente la brecha entre el centro y la periferia, y analizar si estas diferencias se están reduciendo con el tiempo.
+Dimensiones de análisis:
+1. Modelo de Solow y crecimiento endógeno para justificar por qué es importante la innovación.
+2. Las patentes como métrica, explicando sus ventajas (datos, localización) y limitaciones (no todo se patenta, ni todos los sectores tienen la misma propensión).
+3. Motivos concretos del desbordamiento de conocimiento (movilidad de trabajadores, interacción cara a cara, redes de proveedores) y economías de aglomeración.
+4. Metodologías empíricas para medir las diferencias tecnológicas entre regiones y analizar si existe convergencia (si las regiones atrasadas innovan cada vez más rápido que las líderes).
+5. Revisión y diseño de políticas públicas (como los Fondos de Cohesión o las estrategias RIS3) que hayan demostrado reducir las brechas regionales o que sirvan para aumentar los desbordamientos de conocimiento.
+Ámbito: regiones NUTS 2 de la UE, datos de las últimas décadas (2000-2020), enfoque en economía regional, convergencia y políticas públicas.

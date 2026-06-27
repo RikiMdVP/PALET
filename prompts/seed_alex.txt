@@ -1,0 +1,30 @@
+Quiero realizar una revisión sistemática de la literatura sobre el impacto de la tecnología en la industria cinematográfica, con especial énfasis en el papel de la inteligencia artificial y otros avances tecnológicos digitales (por ejemplo, CGI, VFX, captura de movimiento, plataformas de streaming, automatización de procesos creativos y productivos). El objetivo es analizar cómo estos cambios tecnológicos han transformado los procesos de producción, distribución, exhibición y consumo cinematográfico, así como sus efectos económicos, laborales, creativos e institucionales.
+
+Dimensiones de análisis:
+	1.	Metodologías empleadas para evaluar el impacto tecnológico en la industria cinematográfica
+	•	Enfoques cuantitativos, cualitativos y mixtos.
+	•	Estudios de caso, análisis econométricos, análisis de redes, métodos experimentales y revisiones comparativas entre tecnologías.
+	2.	Modelos teóricos y marcos analíticos utilizados para explicar la transformación tecnológica del cine
+	•	Modelos de cambio tecnológico y creatividad.
+	•	Economía de la innovación, economía cultural y teorías de industrias creativas.
+	•	Modelos de organización industrial y plataformas digitales aplicados al sector audiovisual.
+	3.	Efectos heterogéneos de la tecnología dentro de la industria cinematográfica
+	•	Diferencias entre roles laborales (creativos, técnicos, administrativos).
+	•	Impactos diferenciados según género, nivel de cualificación y tipo de empleo (freelance vs. empleo estable).
+	•	Variaciones entre grandes estudios, productoras independientes y cinematografías nacionales versus globales.
+	4.	Impacto de la tecnología en el empleo, las condiciones laborales y las habilidades requeridas
+	•	Sustitución, complementariedad o transformación del trabajo humano mediante IA y automatización.
+	•	Procesos de reconversión laboral, aprendizaje de nuevas habilidades y cambios en la estructura ocupacional.
+	5.	Rol de las instituciones, regulaciones y capacidades industriales en la adopción tecnológica
+	•	Legislación sobre derechos de autor, uso de IA y protección laboral.
+	•	Papel de sindicatos, políticas culturales y sistemas de financiamiento público.
+	•	Capacidades tecnológicas y capital humano de los distintos países o regiones.
+	6.	Implicaciones para el diseño de políticas públicas y estrategias industriales
+	•	Políticas para mitigar efectos adversos sobre el empleo creativo y técnico.
+	•	Incentivos para una adopción tecnológica inclusiva y sostenible.
+	•	Regulación ética y económica del uso de IA en la creación audiovisual.
+
+Ámbito del estudio:
+	•	Cobertura geográfica: países OCDE y principales hubs de producción cinematográfica global.
+	•	Periodo temporal: siglo XXI, con énfasis en la aceleración tecnológica de las dos últimas décadas.
+	•	Enfoque disciplinar: economía cultural, estudios cinematográficos, economía de la innovación, estudios laborales y políticas públicas.

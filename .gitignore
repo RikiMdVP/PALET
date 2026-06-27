@@ -1,0 +1,50 @@
+# ── Entornos virtuales ──────────────────────────────────
+.venv/
+venv/
+palet_env/
+
+# ── Variables de entorno y claves API ───────────────────
+.env
+.env.*
+!.env.example
+
+# ── Outputs generados (resultados de ejecuciones) ───────
+results/
+outputs/
+logs/
+runs_history.json
+
+# ── Datos de investigación (no versionables) ────────────
+data/raw/
+data/processed/
+
+# ── Prompts de sesiones específicas (no son código) ─────
+prompts/_gui_seed_*.txt
+
+# ── LaTeX auxiliares ────────────────────────────────────
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+
+# ── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# ── macOS ────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── VS Code (opcional, puedes quitarlo si quieres compartir config) ──
+.vscode/
+
+# ── Jupyter (por si acaso) ───────────────────────────────
+.ipynb_checkpoints/

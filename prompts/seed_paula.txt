@@ -1,0 +1,9 @@
+Quiero realizar una revisión sistemática sobre el impacto del fraude en la compra de vehículos nuevos y de segunda mano a través de créditos.
+
+Dimensiones de análisis:
+1. Metodologías utilizadas para cuantificar el impacto del fraude.
+2. Recomendación de modelos de que incluyan elementos teóricos que expliquen los efectos, así como modelos predictivos de detección de fraude.
+3. Heterogeneidad en los efectos por segmentos sociodemográficos (niveles educativos o género), y entre diferentes escalas de tamaño geográfico.
+4. Diseño de políticas y herramientas para prevenir y detectar fraudes de este tipo.
+
+Ámbito: paises OCDE, siglo XXI, enfoque en mercado de vehículos nuevos y de segunda mano y políticas públicas.
