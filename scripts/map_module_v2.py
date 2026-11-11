@@ -15,7 +15,7 @@ if _REPO_ROOT not in sys.path:
 
 from palet.errors import PaletConfigError, PaletError
 from palet import config
-from palet.llm import get_client
+from palet import llm
 
 # Cargar system prompt
 MAP_SYSTEM_PATH = os.path.join(
@@ -170,15 +170,13 @@ Abstract: {abstract}"""
 
     for attempt in range(max_retries):
         try:
-            response = get_client().messages.create(
-                model=config.get_model("map"),
-                max_tokens=config.get_limit("map_max_tokens"),
-                temperature=0,   # Nula para resultado determinista, reproducibilidad total
+            response = llm.complete(
+                "map", "map_max_tokens",
                 system=system_prompt,  # ← Con RQs inyectadas
-                messages=[{"role": "user", "content": user_message}]
+                user=user_message,
             )
 
-            response_text = response.content[0].text.strip()
+            response_text = response.text
 
             # Limpiar markdown si presente
             if response_text.startswith("```"):

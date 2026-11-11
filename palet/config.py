@@ -80,6 +80,11 @@ def get_price(model: str) -> tuple[float, float]:
     return prices[model]["input_per_mtok"], prices[model]["output_per_mtok"]
 
 
+def get_model_options(model: str) -> dict:
+    """Extra request parameters configured for a model (e.g. temperature)."""
+    return dict(load_config().get("model_options", {}).get(model, {}))
+
+
 def cost_usd(phase: str, input_tokens: float, output_tokens: float) -> float:
     """Cost in USD of a call made by ``phase`` with the given token counts."""
     input_price, output_price = get_price(get_model(phase))

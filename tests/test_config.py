@@ -23,10 +23,16 @@ def test_every_phase_has_a_model_and_a_price():
         assert model and input_price > 0 and output_price > 0
 
 
-def test_wp0_keeps_the_model_used_so_far():
-    # WP0 only moves the model ID to the settings file; changing it is a
-    # deliberate decision for a later work package.
-    assert {config.get_model(phase) for phase in config.PHASES} == {"claude-sonnet-4-6"}
+def test_base_model_is_opus_5_5_with_its_published_price():
+    assert {config.get_model(phase) for phase in config.PHASES} == {"claude-opus-5-5"}
+    assert config.get_price("claude-opus-5-5") == (4.0, 20.0)
+
+
+def test_sampling_parameters_only_for_models_that_accept_them():
+    # Opus 5.5 answers HTTP 400 to temperature/top_p/top_k.
+    assert config.get_model_options("claude-opus-5-5") == {}
+    assert config.get_model_options("claude-sonnet-4-6") == {"temperature": 0}
+    assert config.get_model_options("unknown-model") == {}
 
 
 def test_cost_is_computed_from_configured_prices():

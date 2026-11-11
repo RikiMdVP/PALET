@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 import synthesis_module
+from palet import llm
 from report_generator_v2 import generate_latex_report
 
 RQ = "Does X create jobs?"
@@ -22,7 +23,7 @@ class FakeClient:
         if self.error is not None:
             raise self.error
         return SimpleNamespace(
-            content=[SimpleNamespace(text=self.reply)],
+            content=[SimpleNamespace(type="text", text=self.reply)],
             usage=SimpleNamespace(input_tokens=100, output_tokens=50),
         )
 
@@ -51,7 +52,7 @@ def papers_df():
 
 
 def _synthesize(monkeypatch, client, papers_df, paper_ids=(0, 1)):
-    monkeypatch.setattr(synthesis_module, "get_client", lambda: client)
+    monkeypatch.setattr(llm, "get_client", lambda: client)
     return synthesis_module.generate_narrative_synthesis(
         rq_index=1, rq_text=RQ, paper_ids=list(paper_ids),
         papers_df=papers_df, reasoning_map={}, verbose=False,
@@ -80,7 +81,7 @@ def test_rq_without_papers_is_flagged_and_keeps_its_index(monkeypatch, papers_df
 
 
 def test_failed_gap_detection_has_status_error(monkeypatch, papers_df):
-    monkeypatch.setattr(synthesis_module, "get_client", lambda: FakeClient(reply="not json"))
+    monkeypatch.setattr(llm, "get_client", lambda: FakeClient(reply="not json"))
     gaps = synthesis_module.detect_literature_gaps(
         rqs=[RQ], assignments={"RQ1": [0, 1]}, papers_df=papers_df, syntheses=[], verbose=False,
     )
@@ -106,7 +107,7 @@ def _report(tmp_path, papers_df, syntheses, gaps):
 
 def test_report_shows_a_notice_instead_of_failed_synthesis(monkeypatch, tmp_path, papers_df):
     failed = _synthesize(monkeypatch, FakeClient(error=RuntimeError("529 overloaded")), papers_df)
-    monkeypatch.setattr(synthesis_module, "get_client", lambda: FakeClient(reply="not json"))
+    monkeypatch.setattr(llm, "get_client", lambda: FakeClient(reply="not json"))
     gaps = synthesis_module.detect_literature_gaps(
         rqs=[RQ], assignments={"RQ1": [0, 1]}, papers_df=papers_df, syntheses=[failed], verbose=False,
     )

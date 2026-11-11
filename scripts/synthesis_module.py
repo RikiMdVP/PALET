@@ -16,7 +16,7 @@ if _REPO_ROOT not in sys.path:
 
 from palet.errors import PaletConfigError
 from palet import config
-from palet.llm import get_client
+from palet import llm
 
 # Cargar system prompt
 SYNTHESIS_SYSTEM_PATH = os.path.join(
@@ -233,15 +233,13 @@ Generate the narrative synthesis for this Research Question following the struct
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = get_client().messages.create(
-                model=config.get_model("synthesis"),
-                max_tokens=MAX_TOKENS_SYNTH,
-                temperature=0,
+            response = llm.complete(
+                "synthesis", "synthesis_max_tokens",
                 system=SYNTHESIS_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_message}]
+                user=user_message,
             )
 
-            result = _parse_json_response(response.content[0].text, mode="A")
+            result = _parse_json_response(response.text, mode="A")
 
             # Asegurar campos mínimos
             result['rq_index'] = rq_index
@@ -388,15 +386,13 @@ Analyze the above information to identify literature gaps across all Research Qu
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = get_client().messages.create(
-                model=config.get_model("synthesis"),
-                max_tokens=MAX_TOKENS_GAPS,
-                temperature=0,
+            response = llm.complete(
+                "synthesis", "gaps_max_tokens",
                 system=SYNTHESIS_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_message}]
+                user=user_message,
             )
 
-            result = _parse_json_response(response.content[0].text, mode="B")
+            result = _parse_json_response(response.text, mode="B")
             result['status'] = 'ok'
             result['tokens_used'] = {
                 'input': response.usage.input_tokens,

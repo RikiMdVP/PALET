@@ -13,7 +13,7 @@ if _REPO_ROOT not in sys.path:
 
 from palet.errors import PaletError
 from palet import config
-from palet.llm import get_client
+from palet import llm
 
 QSP_SYSTEM_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
@@ -69,14 +69,9 @@ Format as JSON:
 }}
 """
 
-    response = get_client().messages.create(
-        model=config.get_model("qsp"),
-        max_tokens=config.get_limit("qsp_max_tokens"),
-        system = QSP_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    response = llm.complete("qsp", "qsp_max_tokens", system=QSP_SYSTEM_PROMPT, user=prompt)
 
-    response_text = response.content[0].text.strip()
+    response_text = response.text
 
     # Limpiar markdown
     if response_text.startswith("```json"):

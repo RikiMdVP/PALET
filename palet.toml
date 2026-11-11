@@ -3,10 +3,10 @@
 
 [models]
 # Exact Anthropic model ID used by each phase.
-arq = "claude-sonnet-4-6"
-qsp = "claude-sonnet-4-6"
-map = "claude-sonnet-4-6"
-synthesis = "claude-sonnet-4-6"
+arq = "claude-opus-5-5"
+qsp = "claude-opus-5-5"
+map = "claude-opus-5-5"
+synthesis = "claude-opus-5-5"
 
 [pricing]
 # Approximate conversion used only to display cost estimates in euros.
@@ -14,16 +14,31 @@ usd_to_eur = 0.92
 
 # List prices in USD per million tokens. Verified 2026-11-11 against
 # Anthropic's published pricing; check them again when changing models.
+[pricing.models."claude-opus-5-5"]
+input_per_mtok = 4.0
+output_per_mtok = 20.0
+
+# Model used up to PALET 1.0; kept so that earlier runs can be reproduced.
 [pricing.models."claude-sonnet-4-6"]
 input_per_mtok = 3.0
 output_per_mtok = 15.0
 
+# Extra request parameters per model. Claude Opus 5.5 rejects temperature,
+# top_p and top_k (HTTP 400) and always thinks before answering, so it takes
+# none; older models keep temperature = 0 as before.
+[model_options."claude-sonnet-4-6"]
+temperature = 0
+
 [limits]
-arq_max_tokens = 2000
-qsp_max_tokens = 1000
-map_max_tokens = 1500
-synthesis_max_tokens = 4000
-gaps_max_tokens = 4000
+# Maximum output tokens per call. With models that think before answering,
+# the thinking counts against this limit, so it needs generous headroom
+# (PALET 1.0 used 2000 / 1000 / 1500 / 4000 / 4000). It is a ceiling, not a
+# spend: only the tokens actually produced are billed.
+arq_max_tokens = 8000
+qsp_max_tokens = 8000
+map_max_tokens = 8000
+synthesis_max_tokens = 16000
+gaps_max_tokens = 16000
 # Papers sent to the model per research question, and characters kept per abstract.
 synthesis_max_papers_per_rq = 25
 synthesis_max_abstract_chars = 1200

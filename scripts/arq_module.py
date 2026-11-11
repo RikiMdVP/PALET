@@ -14,7 +14,7 @@ if _REPO_ROOT not in sys.path:
 
 from palet.errors import PaletConfigError
 from palet import config
-from palet.llm import get_client
+from palet import llm
 
 # Cargar prompt del sistema
 prompt_system_path = os.path.join(
@@ -47,20 +47,14 @@ def extract_keywords(seed_prompt: str, verbose: bool = True) -> dict:
         print(f"Longitud del prompt: {len(seed_prompt)} caracteres\n")
 
     try:
-        response = get_client().messages.create(
-            model=config.get_model("arq"),
-            max_tokens=config.get_limit("arq_max_tokens"),
+        response = llm.complete(
+            "arq", "arq_max_tokens",
             system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Seed prompt:\n\n{seed_prompt}"
-                }
-            ]
+            user=f"Seed prompt:\n\n{seed_prompt}",
         )
 
         # Extraer respuesta
-        response_text = response.content[0].text.strip()
+        response_text = response.text
 
         # Limpiar posibles markdown code blocks
         if response_text.startswith("```json"):

@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 import map_module_v2
+from palet import llm
 from prisma_validator import build_prisma_data, generate_prisma_checklist
 
 RQS = ["Does X create jobs?", "Does Y destroy jobs?"]
@@ -26,11 +27,15 @@ class FakeClient:
         self.calls += 1
         if self.error is not None:
             raise self.error
-        return SimpleNamespace(content=[SimpleNamespace(text=self.reply)])
+        return SimpleNamespace(
+            content=[SimpleNamespace(type="text", text=self.reply)],
+            usage=SimpleNamespace(input_tokens=100, output_tokens=50),
+            stop_reason="end_turn",
+        )
 
 
 def _analyze(monkeypatch, client, abstract="An abstract about jobs."):
-    monkeypatch.setattr(map_module_v2, "get_client", lambda: client)
+    monkeypatch.setattr(llm, "get_client", lambda: client)
     return map_module_v2.analyze_paper(
         paper_id=7, title="A paper", abstract=abstract, rqs=RQS, system_prompt="system"
     )
