@@ -174,6 +174,7 @@ Abstract: {abstract}"""
                 "map", "map_max_tokens",
                 system=system_prompt,  # ← Con RQs inyectadas
                 user=user_message,
+                attempt=attempt,
             )
 
             response_text = response.text

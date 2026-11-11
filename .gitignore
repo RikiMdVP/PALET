@@ -12,6 +12,7 @@ palet_env/
 results/
 outputs/
 runs/
+.palet_cache/
 logs/
 runs_history.json
 

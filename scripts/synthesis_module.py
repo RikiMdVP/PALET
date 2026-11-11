@@ -237,6 +237,7 @@ Generate the narrative synthesis for this Research Question following the struct
                 "synthesis", "synthesis_max_tokens",
                 system=SYNTHESIS_SYSTEM_PROMPT,
                 user=user_message,
+                attempt=attempt,
             )
 
             result = _parse_json_response(response.text, mode="A")
@@ -390,6 +391,7 @@ Analyze the above information to identify literature gaps across all Research Qu
                 "synthesis", "gaps_max_tokens",
                 system=SYNTHESIS_SYSTEM_PROMPT,
                 user=user_message,
+                attempt=attempt,
             )
 
             result = _parse_json_response(response.text, mode="B")
