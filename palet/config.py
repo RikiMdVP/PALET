@@ -111,6 +111,20 @@ def get_limit(name: str) -> int:
     return limits[name]
 
 
+def get_screening_settings() -> dict:
+    """Screeners (name + model) and number of parallel workers."""
+    screening = load_config().get("screening", {})
+    screeners = screening.get("screeners", [])
+    catalogue = load_config()["pricing"].get("models", {})
+    for screener in screeners:
+        if screener.get("model") not in catalogue:
+            raise PaletConfigError(
+                f"Screener '{screener.get('name')}' uses a model that is not in the catalogue: "
+                f"{screener.get('model')}"
+            )
+    return {"screeners": [dict(s) for s in screeners], "workers": screening.get("workers", 4)}
+
+
 def get_search_setting(name: str):
     """A value from the [search] section."""
     search = load_config()["search"]

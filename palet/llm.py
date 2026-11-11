@@ -41,7 +41,8 @@ def get_client():
             )
         from anthropic import Anthropic
 
-        _client = Anthropic(api_key=api_key)
+        # Generous retries: screening sends many calls and may hit rate limits.
+        _client = Anthropic(api_key=api_key, max_retries=8)
     return _client
 
 
@@ -61,6 +62,7 @@ class LLMResponse:
     stop_reason: str | None = None
     cached: bool = False
     cache_key: str | None = None
+    created_at: str | None = None      # when the reply was first obtained (kept by the cache)
 
 
 def configure(cache_dir="unchanged", replay=None) -> None:
@@ -161,6 +163,7 @@ def complete(phase: str, max_tokens_limit: str, system: str, user: str,
             text=entry["text"],
             usage=SimpleNamespace(input_tokens=entry["input_tokens"], output_tokens=entry["output_tokens"]),
             model=model, stop_reason=entry.get("stop_reason"), cached=True, cache_key=key,
+            created_at=entry.get("created_at"),
         )
 
     if _settings["replay"]:
@@ -185,14 +188,15 @@ def complete(phase: str, max_tokens_limit: str, system: str, user: str,
             f"If it stopped at the token limit, raise '{max_tokens_limit}' in palet.toml."
         )
 
+    created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     if path is not None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({
             "key": key, "phase": phase, "attempt": attempt, "request": request,
             "text": text, "stop_reason": stop_reason,
             "input_tokens": input_tokens, "output_tokens": output_tokens,
-            "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "created_at": created_at,
         }, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    return LLMResponse(text=text, usage=response.usage, model=model,
-                       stop_reason=stop_reason, cached=False, cache_key=key)
+    return LLMResponse(text=text, usage=response.usage, model=model, stop_reason=stop_reason,
+                       cached=False, cache_key=key, created_at=created_at)

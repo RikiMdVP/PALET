@@ -68,6 +68,7 @@ qsp_max_tokens = 8000
 map_max_tokens = 8000
 synthesis_max_tokens = 16000
 gaps_max_tokens = 16000
+screen_max_tokens = 8000
 # Papers sent to the model per research question, and characters kept per abstract.
 synthesis_max_papers_per_rq = 25
 synthesis_max_abstract_chars = 1200
@@ -75,3 +76,16 @@ synthesis_max_abstract_chars = 1200
 [search]
 # OpenAlex accepts at most 100 results per page.
 openalex_per_page = 100
+
+[screening]
+# Two independent screeners judge every record; what they do not agree on
+# goes to a person. Method decision of 2026-11-11: two different models.
+workers = 4
+
+[[screening.screeners]]
+name = "A"
+model = "claude-opus-5-5"
+
+[[screening.screeners]]
+name = "B"
+model = "claude-sonnet-5-5"

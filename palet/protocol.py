@@ -24,6 +24,7 @@ class Criterion(BaseModel):
     kind: Literal["include", "exclude"]
     dimension: Dimension
     rule: str = Field(min_length=10)
+    reason_code: Optional[str] = None      # code recorded when a record fails this criterion
     examples_in: list[str] = Field(default_factory=list)
     examples_out: list[str] = Field(default_factory=list)
 
