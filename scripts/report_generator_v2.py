@@ -1149,6 +1149,18 @@ The following papers were not assigned to any research question:
             s        = synth.get('synthesis', {})
 
             latex_content += f"\\subsection{{RQ{rq_idx}: {rq_text}}}\n\n"
+
+            if synth.get('status') == 'error':
+                # A failed generation is reported as such, never as findings.
+                latex_content += (
+                    r"\textbf{Synthesis could not be generated for this research "
+                    r"question} (the generation step failed after several attempts). "
+                    r"No findings are reported here; re-run the synthesis step."
+                    + "\n\n"
+                )
+                latex_content += r"\newpage" + "\n\n"
+                continue
+
             latex_content += (
                 f"\\textit{{Confidence: {conf} | "
                 f"Papers used: {n_used}/{n_total}}}\n\n"
@@ -1178,7 +1190,17 @@ The following papers were not assigned to any research question:
     # SECCIÓN 9: DETECCIÓN DE GAPS
     # ============================================================
 
-    if gaps and 'gap_analysis' in gaps:
+    if gaps and gaps.get('status') == 'error':
+        latex_content += r"\section{Literature Gap Analysis}" + "\n\n"
+        latex_content += (
+            r"\textbf{Gap analysis could not be generated} (the generation step "
+            r"failed after several attempts). No gaps are reported here; "
+            r"re-run the synthesis step."
+            + "\n\n"
+        )
+        latex_content += r"\newpage" + "\n\n"
+
+    elif gaps and 'gap_analysis' in gaps:
         ga = gaps['gap_analysis']
         latex_content += r"\section{Literature Gap Analysis}" + "\n\n"
         latex_content += (

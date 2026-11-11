@@ -378,13 +378,29 @@ def run_pipeline_thread(seed_prompt: str, params: dict):
             verbose=True
         )
 
+        # gaps is a dict: the detected gaps are its priority opportunities.
+        gaps_failed = gaps.get("status") == "error"
+        opportunities = gaps.get("gap_analysis", {}).get("priority_opportunities", [])
+        failed_syntheses = [s for s in syntheses if s.get("status") == "error"]
+
+        synthesis_summary = (
+            f"Síntesis para {len(syntheses) - len(failed_syntheses)} de {len(syntheses)} RQs, "
+            f"{len(opportunities)} gaps detectados"
+        )
+        if failed_syntheses:
+            synthesis_summary += f" — {len(failed_syntheses)} síntesis fallidas"
+        if gaps_failed:
+            synthesis_summary += " — detección de gaps fallida"
+
         pipeline_state["completed_phases"].append({
             "phase": "Synthesis",
-            "summary": f"Síntesis para {len(syntheses)} RQs, {len(gaps)} gaps detectados",
+            "summary": synthesis_summary,
             "details": {
-                "rqs_synthesized": len(syntheses),
-                "gaps_detected": len(gaps),
-                "gap_titles": [g.get("title", g.get("gap", str(g)))[:80] for g in gaps] if isinstance(gaps, list) else [],
+                "rqs_synthesized": len(syntheses) - len(failed_syntheses),
+                "rqs_failed": len(failed_syntheses),
+                "gaps_failed": gaps_failed,
+                "gaps_detected": len(opportunities),
+                "gap_titles": [str(o.get("title", ""))[:80] for o in opportunities if isinstance(o, dict)],
             }
         })
 

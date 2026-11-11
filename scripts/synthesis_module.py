@@ -195,6 +195,8 @@ def generate_narrative_synthesis(rq_index: int, rq_text: str,
             print(f"  ⚠️  Sin papers con abstract para RQ{rq_index}")
         return {
             "rq": rq_text,
+            "rq_index": rq_index,
+            "status": "no_papers",
             "synthesis": {
                 "overview": "No papers with available abstracts were assigned to this research question.",
                 "main_findings": "N/A",
@@ -246,6 +248,7 @@ Generate the narrative synthesis for this Research Question following the struct
 
             # Asegurar campos mínimos
             result['rq_index'] = rq_index
+            result['status'] = 'ok'
             result['paper_count_assigned'] = total_assigned
             result['paper_count_used'] = total_used
             result['tokens_used'] = {
@@ -270,6 +273,8 @@ Generate the narrative synthesis for this Research Question following the struct
                 return {
                     "rq": rq_text,
                     "rq_index": rq_index,
+                    "status": "error",
+                    "error": str(e),
                     "synthesis": {
                         "overview": f"Synthesis generation failed after {max_retries} attempts.",
                         "main_findings": "N/A",
@@ -395,6 +400,7 @@ Analyze the above information to identify literature gaps across all Research Qu
             )
 
             result = _parse_json_response(response.content[0].text, mode="B")
+            result['status'] = 'ok'
             result['tokens_used'] = {
                 'input': response.usage.input_tokens,
                 'output': response.usage.output_tokens
@@ -418,6 +424,8 @@ Analyze the above information to identify literature gaps across all Research Qu
                 continue
             else:
                 return {
+                    "status": "error",
+                    "error": str(e),
                     "gap_analysis": {
                         "coverage_overview": f"Gap detection failed: {str(e)}",
                         "geographic_gaps": "N/A",
@@ -532,6 +540,12 @@ def run_synthesis(rqs: list, assignments: dict, papers_df: pd.DataFrame,
     gaps_path = os.path.join(output_dir, gaps_filename)
     with open(gaps_path, 'w', encoding='utf-8') as f:
         json.dump(gaps, f, indent=2, ensure_ascii=False)
+
+    failed_rqs = [f"RQ{s.get('rq_index', '?')}" for s in syntheses if s.get('status') == 'error']
+    if failed_rqs:
+        print(f"\n⚠️  Síntesis FALLIDA para: {', '.join(failed_rqs)} (no hay contenido para esas RQs)")
+    if gaps.get('status') == 'error':
+        print("⚠️  Detección de gaps FALLIDA (no hay análisis de gaps)")
 
     print(f"\n💾 Síntesis guardada: {synthesis_path}")
     print(f"💾 Gaps guardados: {gaps_path}")

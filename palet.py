@@ -300,6 +300,12 @@ def run_palet_pipeline(seed_prompt_file: str, output_dir: str, database: str = "
         print(f"\n  ⚠️  Errores de análisis en MAP: {map_errors} papers SIN EVALUAR")
         print(f"     (no cuentan como excluidos; revisar {map_results_path})")
 
+    failed_syntheses = [s for s in syntheses if s.get('status') == 'error']
+    if failed_syntheses or gaps.get('status') == 'error':
+        print(f"\n  ⚠️  Síntesis fallidas: {len(failed_syntheses)} de {len(syntheses)} RQs"
+              f"{' + detección de gaps' if gaps.get('status') == 'error' else ''}")
+        print("     (el informe lo indica en lugar de mostrar contenido)")
+
     print(f"\nOutputs generados:")
     print(f"  - ARQ: {arq_path}")
     print(f"  - QSP: {qsp_path}")
