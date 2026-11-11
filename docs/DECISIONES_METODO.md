@@ -38,3 +38,9 @@ Registro de decisiones metodológicas. Cada cambio posterior se añade como nuev
 - D6. Quién hace la validación humana a ciegas (dos personas, \~150–200 registros).
 - D7. Lista de 20–40 DOIs imprescindibles (`known_items`).
 - D8. Relación entre los seis bloques de política y las siete RQs; separación entre hallazgos de la revisión y lectura amplia de los autores.
+
+## 2026-11-11 (tarde) — Confirmación de D1–D4 y alcance de la entrega
+
+- **D1–D4 confirmadas por Fernando** (comunicado por Ricardo). El protocolo `config/protocol_isabel_chapter_v1.yaml` pasa a `status: approved` en lo que respecta a preguntas de investigación y criterios. Las cadenas de las búsquedas suplementarias (RQ4 y RQ5) siguen pendientes de definir y aprobar; cada una lleva su propio `status` en el protocolo.
+- **Búsquedas suplementarias de RQ4 y RQ5**: se incluyen en esta entrega (OpenAlex, título y resumen), según D1.
+- **D6 (validación humana a ciegas): aplazada.** Motivo (Ricardo): el capítulo es una revisión de la literatura, no una presentación de la herramienta; la validación formal (sensibilidad, especificidad, κ) se hará cuando PALET se prepare como herramienta de la tesis. Consecuencia para el capítulo: no se pueden afirmar métricas de fiabilidad; el texto debe describir el procedimiento como asistido por IA con supervisión humana (adjudicación de discrepancias y casos dudosos) y declarar como limitación que no se ha validado formalmente.

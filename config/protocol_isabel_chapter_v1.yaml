@@ -2,10 +2,10 @@
 # Source of truth for decisions: docs/DECISIONES_METODO.md
 # Schema will be formalised in WP1/WP2 (palet/models.py :: Protocol). Fable may adapt field names to the final schema.
 version: 1
-status: draft            # draft -> approved (set approved_by/approved_at when Ricardo + Fernando approve)
+status: approved         # criteria and research questions (decisions D1-D4); see docs/DECISIONES_METODO.md
 title: "Policies for job creation and destruction (JCD) linked to the EU twin transition"
-approved_by: null
-approved_at: null
+approved_by: "Ricardo Martínez de Vega; Fernando Rubiera-Morollón"
+approved_at: 2026-11-11
 
 research_questions:      # FROZEN. Only humans may edit.
   RQ1: "What economic-policy recommendations does the literature formulate to mitigate job destruction and boost job creation associated with the green transition in the EU?"
