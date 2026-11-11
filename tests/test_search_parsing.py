@@ -183,7 +183,7 @@ def test_dedup_empty_input():
     assert clean.empty and stats == {}
 
 
-@pytest.mark.xfail(strict=True, reason="WP4: titles are compared literally (case, punctuation)")
+@pytest.mark.xfail(strict=True, reason="legacy se_module dedup (palet.dedup fixes it): titles are compared literally (case, punctuation)")
 def test_dedup_matches_titles_that_differ_only_in_case_and_punctuation():
     df = _records([
         [None, "Green Jobs in Europe: A Review", "OpenAlex"],
@@ -193,7 +193,7 @@ def test_dedup_matches_titles_that_differ_only_in_case_and_punctuation():
     assert len(clean) == 1
 
 
-@pytest.mark.xfail(strict=True, reason="WP4: a DOI given as a resolver URL is not normalised")
+@pytest.mark.xfail(strict=True, reason="legacy se_module dedup (palet.dedup fixes it): a DOI given as a resolver URL is not normalised")
 def test_dedup_matches_doi_written_as_url():
     df = _records([
         ["10.1234/abc", "Title", "OpenAlex"],
@@ -203,7 +203,7 @@ def test_dedup_matches_doi_written_as_url():
     assert len(clean) == 1
 
 
-@pytest.mark.xfail(strict=True, reason="WP4: records without DOI and without title collapse into one")
+@pytest.mark.xfail(strict=True, reason="legacy se_module dedup (palet.dedup fixes it): records without DOI and without title collapse into one")
 def test_dedup_keeps_distinct_records_that_lack_doi_and_title():
     df = _records([
         [None, None, "OpenAlex"],
@@ -213,7 +213,7 @@ def test_dedup_keeps_distinct_records_that_lack_doi_and_title():
     assert len(clean) == 2
 
 
-@pytest.mark.xfail(strict=True, reason="WP4: same study, bilingual title, one record without DOI "
+@pytest.mark.xfail(strict=True, reason="legacy se_module dedup (palet.dedup fixes it): same study, bilingual title, one record without DOI "
                                        "(Coaquira 2022 / Velásquez 2023 in the chapter corpus)")
 def test_dedup_detects_the_same_study_published_under_two_titles():
     df = pd.DataFrame({
