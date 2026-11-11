@@ -295,6 +295,11 @@ def run_palet_pipeline(seed_prompt_file: str, output_dir: str, database: str = "
     print(f"\n  Unmatched (no relevante): {not_relevant} papers")
     print(f"  Unmatched (sin abstract): {no_abstract} papers")
 
+    map_errors = len(summary.get('errors', []))
+    if map_errors:
+        print(f"\n  ⚠️  Errores de análisis en MAP: {map_errors} papers SIN EVALUAR")
+        print(f"     (no cuentan como excluidos; revisar {map_results_path})")
+
     print(f"\nOutputs generados:")
     print(f"  - ARQ: {arq_path}")
     print(f"  - QSP: {qsp_path}")

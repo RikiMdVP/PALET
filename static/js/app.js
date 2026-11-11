@@ -782,6 +782,14 @@ function renderMAPDetails(d) {
                 <span class="detail-rq-count">${d.unmatched_no_abstract || 0}</span>
             </div>
         </div>`;
+        if (d.errors) {
+            html += `<div class="detail-rq-row unmatched">
+            <div class="detail-rq-row-header">
+                <span class="detail-rq-num dim">Sin evaluar (error de análisis)</span>
+                <span class="detail-rq-count">${d.errors}</span>
+            </div>
+        </div>`;
+        }
     }
 
     html += '</div>';
@@ -790,7 +798,7 @@ function renderMAPDetails(d) {
 
 function renderDonutChart(d) {
     const items = d.rq_breakdown.filter(rq => rq.count > 0);
-    const unmatched = (d.unmatched_not_relevant || 0) + (d.unmatched_no_abstract || 0);
+    const unmatched = (d.unmatched_not_relevant || 0) + (d.unmatched_no_abstract || 0) + (d.errors || 0);
     if (unmatched > 0) {
         items.push({ key: "Otros", count: unmatched });
     }

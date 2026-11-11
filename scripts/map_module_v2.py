@@ -141,7 +141,9 @@ def analyze_paper(paper_id: int, title: str, abstract: str, rqs: list,
         verbose: Mostrar progreso
 
     Returns:
-        dict con assignments, reasoning, confidence
+        dict con assignments, reasoning, confidence y status:
+        'ok' (analizado), 'no_abstract' (no analizado) o 'error' (el análisis
+        falló; el paper NO se ha evaluado y no cuenta como "no relevante")
     """
 
     if pd.isna(abstract) or not abstract or abstract == "":
@@ -149,6 +151,7 @@ def analyze_paper(paper_id: int, title: str, abstract: str, rqs: list,
             "paper_id": paper_id,
             "title": title,
             "assignments": ["unmatched_no_abstract"],
+            "status": "no_abstract",
             "reasoning": "No abstract available",
             "confidence": "n/a"
         }
@@ -215,11 +218,13 @@ Abstract: {abstract}"""
                         "paper_id": paper_id,
                         "title": title,
                         "assignments": [],
+                        "status": "error",
                         "reasoning": f"Validation failed: {error_msg}",
                         "confidence": "n/a"
                     }
 
             # Validación exitosa
+            result['status'] = 'ok'
             if verbose:
                 conf = result.get('confidence', 'n/a')
                 assigns = result.get('assignments', [])
@@ -243,6 +248,7 @@ Abstract: {abstract}"""
                     "paper_id": paper_id,
                     "title": title,
                     "assignments": [],
+                    "status": "error",
                     "reasoning": f"JSON parsing error after {max_retries} attempts",
                     "confidence": "n/a"
                 }
@@ -258,6 +264,7 @@ Abstract: {abstract}"""
                     "paper_id": paper_id,
                     "title": title,
                     "assignments": [],
+                    "status": "error",
                     "reasoning": f"Error: {str(e)}",
                     "confidence": "n/a"
                 }
@@ -310,11 +317,14 @@ def generate_assignment_summary(results: list, rqs: list) -> dict:
     summary = {f"RQ{i+1}": [] for i in range(len(rqs))}
     summary["unmatched_not_relevant"] = []      # analizados, no encajan
     summary["unmatched_no_abstract"]  = []      # no analizados por falta de abstract
+    summary["errors"]                 = []      # análisis fallido: pendientes de revisión
 
     for result in results:
         assignments = result.get('assignments', [])
 
-        if assignments == ['unmatched_no_abstract']:
+        if result.get('status') == 'error':
+            summary["errors"].append(result['paper_id'])
+        elif assignments == ['unmatched_no_abstract']:
             summary["unmatched_no_abstract"].append(result['paper_id'])
         elif not assignments:
             summary["unmatched_not_relevant"].append(result['paper_id'])
@@ -383,6 +393,10 @@ def print_summary(summary: dict, rqs: list):
 
     print(f"\nUnmatched (no relevante): {unmatched} papers")
     print(f"Unmatched (sin abstract): {unmatched_no_abstract} papers")
+
+    errors = len(assignments.get('errors', []))
+    if errors:
+        print(f"⚠️  Errores de análisis (sin evaluar): {errors} papers")
 
     print("="*70)
 

@@ -895,6 +895,9 @@ screened, assessed for eligibility, and included in the synthesis.}
     no_abstract_ids = assignments.get('unmatched_no_abstract', [])
     latex_content += f"Not relevant to any RQ & {format_share(len(not_relevant_ids), total_papers)} \\\\\n"
     latex_content += f"No abstract available & {format_share(len(no_abstract_ids), total_papers)} \\\\\n"
+    error_ids = assignments.get('errors', [])
+    if error_ids:
+        latex_content += f"Analysis failed (not assessed) & {format_share(len(error_ids), total_papers)} \\\\\n"
 
     latex_content += r"""\bottomrule
 \end{tabular}
@@ -1093,6 +1096,7 @@ The following papers have received the highest number of citations:
     unmatched_groups = [
         ("Not relevant to any research question", not_relevant_ids),
         ("No abstract available (not analysed)", no_abstract_ids),
+        ("Analysis failed (not assessed; to be re-run or reviewed manually)", error_ids),
     ]
 
     if any(ids for _, ids in unmatched_groups):

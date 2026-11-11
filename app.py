@@ -313,13 +313,23 @@ def run_pipeline_thread(seed_prompt: str, params: dict):
             count = len(summary.get(key, []))
             rq_breakdown.append({"key": key, "text": rq, "count": count})
 
+        map_errors = len(summary.get("errors", []))
+        map_summary_text = (
+            f"{assigned_count} papers asignados a RQs, "
+            f"{len(summary.get('unmatched_not_relevant', []))} no relevantes, "
+            f"{len(summary.get('unmatched_no_abstract', []))} sin abstract"
+        )
+        if map_errors:
+            map_summary_text += f", {map_errors} sin evaluar por error"
+
         pipeline_state["completed_phases"].append({
             "phase": "MAP",
-            "summary": f"{assigned_count} papers asignados a RQs, {len(summary.get('unmatched_not_relevant', []))} no relevantes, {len(summary.get('unmatched_no_abstract', []))} sin abstract",
+            "summary": map_summary_text,
             "details": {
                 "rq_breakdown": rq_breakdown,
                 "unmatched_not_relevant": len(summary.get("unmatched_not_relevant", [])),
                 "unmatched_no_abstract": len(summary.get("unmatched_no_abstract", [])),
+                "errors": map_errors,
                 "total_assigned": assigned_count,
             }
         })

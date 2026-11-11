@@ -41,6 +41,8 @@ def build_prisma_data(arq_data: dict, dedup_stats: dict,
 
     no_abstract       = len(summary.get('unmatched_no_abstract', []))
     not_relevant      = len(summary.get('unmatched_not_relevant', []))
+    # Papers whose MAP analysis failed: neither assessed nor excluded.
+    analysis_errors   = len(summary.get('errors', []))
 
     included = count_included(summary)
 
@@ -50,7 +52,8 @@ def build_prisma_data(arq_data: dict, dedup_stats: dict,
         'duplicates_removed': duplicates,
         'screened': after_dedup,
         'excluded_no_abstract': no_abstract,
-        'assessed_eligibility': after_dedup - no_abstract,
+        'analysis_errors': analysis_errors,
+        'assessed_eligibility': after_dedup - no_abstract - analysis_errors,
         'excluded_not_relevant': not_relevant,
         'included': included,
         'inclusion_criteria': arq_data.get('inclusion_criteria', []),
@@ -110,6 +113,8 @@ def generate_prisma_diagram(prisma_data: dict, output_dir: str) -> str:
     dedup_text    = f"Duplicados eliminados\nn={prisma_data['duplicates_removed']}"
     elig_text     = f"Evaluados para\nelegibilidad\nn={prisma_data['assessed_eligibility']}"
     no_abs_text   = f"Excluidos sin abstract\nn={prisma_data['excluded_no_abstract']}"
+    if prisma_data.get('analysis_errors'):
+        no_abs_text += f"\nNo evaluados (error de análisis)\nn={prisma_data['analysis_errors']}"
     incl_text     = f"Incluidos en\nsíntesis cualitativa\nn={prisma_data['included']}"
     not_rel_text  = f"Excluidos (no relevantes)\nn={prisma_data['excluded_not_relevant']}"
 
@@ -210,6 +215,14 @@ def generate_prisma_checklist(prisma_data: dict) -> list:
         True,  # siempre True: MAP registra ambas categorías
         f"Sin abstract: {prisma_data['excluded_no_abstract']}, "
         f"No relevantes: {prisma_data['excluded_not_relevant']}"
+    ))
+
+    # Ítem 6b: ningún registro se quedó sin evaluar por un error de análisis
+    analysis_errors = prisma_data.get('analysis_errors', 0)
+    checklist.append((
+        "Todos los registros evaluados sin errores",
+        analysis_errors == 0,
+        f"{analysis_errors} registro(s) sin evaluar por error de análisis"
     ))
 
     # Ítem 7: Papers incluidos > 0
