@@ -15,8 +15,35 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ─── Email para buenas prácticas con APIs ───────────────────────────────────
-CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "ricardo.martinez.rm774@gmail.com")
+# OpenAlex rejects page sizes above 100 (API limit since 2026).
+OPENALEX_PER_PAGE = 100
+
+
+class SearchError(RuntimeError):
+    """A database search failed. Never to be confused with 'no results'."""
+
+
+def _contact_email():
+    """Contact e-mail for polite API use, read from .env (None if not set)."""
+    return os.getenv("CONTACT_EMAIL") or None
+
+
+def _openalex_api_key():
+    """OpenAlex API key, read from .env (None if not set)."""
+    return os.getenv("OPENALEX_API_KEY") or None
+
+
+def _describe_request_error(error: Exception) -> str:
+    """Describe a failed request WITHOUT its URL.
+
+    The text of a requests exception includes the full URL, and the URL
+    carries the API key and the contact e-mail as query parameters.
+    """
+    response = getattr(error, 'response', None)
+    if response is not None:
+        detail = (getattr(response, 'text', '') or '').strip().replace('\n', ' ')[:200]
+        return f"HTTP {response.status_code}" + (f" — {detail}" if detail else "")
+    return type(error).__name__
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -53,11 +80,18 @@ def search_openalex(query: str, max_results: int = 100, verbose: bool = True,
 
     params = {
         "search": query,
-        "per_page": 200,
-        "mailto": CONTACT_EMAIL
+        "per_page": OPENALEX_PER_PAGE,
     }
     if filters:
         params["filter"] = ",".join(filters)
+
+    # Mandatory since February 2026; `mailto` no longer grants anything.
+    api_key = _openalex_api_key()
+    if api_key:
+        params["api_key"] = api_key
+    else:
+        print("   ⚠️  OPENALEX_API_KEY no está definida en .env: OpenAlex solo "
+              "concede una cuota mínima de prueba sin clave.")
 
     if verbose:
         print(f"\n🔍 Buscando en OpenAlex...")
@@ -80,13 +114,15 @@ def search_openalex(query: str, max_results: int = 100, verbose: bool = True,
             all_results.extend(results)
             if verbose:
                 print(f"   Página {page}: {len(results)} resultados | Total: {len(all_results)}")
-            if len(results) < 200:
+            if len(results) < OPENALEX_PER_PAGE:
                 break
             page += 1
             time.sleep(0.1)
         except requests.exceptions.RequestException as e:
-            print(f"   ⚠️  Error en OpenAlex: {e}")
-            break
+            # A failed request is an error, not an empty or shorter result set.
+            raise SearchError(
+                f"OpenAlex search failed on page {page}: {_describe_request_error(e)}"
+            ) from None
 
     return all_results[:max_results]
 
@@ -221,16 +257,19 @@ def search_pubmed(query: str, max_results: int = 100, verbose: bool = True,
         "retmax": min(max_results, 10000),
         "retmode": "json",
         "tool": "PALET",
-        "email": CONTACT_EMAIL
     }
+    contact_email = _contact_email()
+    if contact_email:
+        esearch_params["email"] = contact_email
 
     try:
         r = requests.get(PUBMED_ESEARCH, params=esearch_params, timeout=30)
         r.raise_for_status()
         search_data = r.json()
     except requests.exceptions.RequestException as e:
-        print(f"   ⚠️  Error en PubMed esearch: {e}")
-        return []
+        raise SearchError(
+            f"PubMed search (esearch) failed: {_describe_request_error(e)}"
+        ) from None
 
     pmids = search_data.get('esearchresult', {}).get('idlist', [])
     total_found = int(search_data.get('esearchresult', {}).get('count', 0))
@@ -254,8 +293,9 @@ def search_pubmed(query: str, max_results: int = 100, verbose: bool = True,
             "rettype": "xml",
             "retmode": "xml",
             "tool": "PALET",
-            "email": CONTACT_EMAIL
         }
+        if contact_email:
+            efetch_params["email"] = contact_email
 
         try:
             r = requests.get(PUBMED_EFETCH, params=efetch_params, timeout=60)
@@ -269,8 +309,10 @@ def search_pubmed(query: str, max_results: int = 100, verbose: bool = True,
             time.sleep(0.34)  # NCBI permite max 3 req/seg sin API key
 
         except requests.exceptions.RequestException as e:
-            print(f"   ⚠️  Error en PubMed efetch (lote {i // batch_size + 1}): {e}")
-            continue
+            raise SearchError(
+                f"PubMed download (efetch) failed on batch {i // batch_size + 1}: "
+                f"{_describe_request_error(e)}"
+            ) from None
 
     return all_articles[:max_results]
 

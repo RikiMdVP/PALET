@@ -65,7 +65,7 @@ def search_openalex(query: str, max_results: int = 100, verbose: bool = True,
     params = {
         "search": query,
         "per_page": 200,
-        "mailto": "ricardo.martinez.rm774@gmail.com"  # Buenas prácticas OpenAlex
+        "mailto": os.getenv("CONTACT_EMAIL", "")  # Read from .env, never hardcoded
     }
 
     if filters:
