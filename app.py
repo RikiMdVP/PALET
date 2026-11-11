@@ -25,6 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = BASE_DIR / "scripts"
 PROMPTS_DIR = BASE_DIR / "prompts"
 RESULTS_DIR = BASE_DIR / "results"
+RUNS_DIR = BASE_DIR / "runs"
 HISTORY_FILE = BASE_DIR / "runs_history.json"
 
 # Añadir scripts/ al path para importar módulos PALET
@@ -600,12 +601,41 @@ async def api_list_prompts():
     return JSONResponse(seeds)
 
 
+def resolve_download_path(filename: str) -> Optional[Path]:
+    """Map a requested name to a file that may be served, or None.
+
+    Only three kinds of file can be downloaded: anything under results/ or
+    runs/, and the seed prompts (prompts/seed_*.txt) that the GUI loads.
+    Paths are resolved first, so "..", absolute paths and symlinks cannot
+    escape those folders.
+    """
+    requested = Path(filename)
+    if requested.is_absolute():
+        candidates = [requested]
+    else:
+        candidates = [BASE_DIR / requested, RESULTS_DIR / requested]
+
+    output_dirs = [RESULTS_DIR.resolve(), RUNS_DIR.resolve()]
+    prompts_dir = PROMPTS_DIR.resolve()
+
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+        except (OSError, RuntimeError):
+            continue
+        if not resolved.is_file():
+            continue
+        if any(resolved.is_relative_to(directory) for directory in output_dirs):
+            return resolved
+        if (resolved.parent == prompts_dir
+                and resolved.name.startswith("seed_") and resolved.suffix == ".txt"):
+            return resolved
+    return None
+
+
 @app.get("/api/download/{filename:path}")
 async def api_download(filename: str):
-    filepath = Path(filename)
-    if not filepath.exists():
-        # Intentar en results/
-        filepath = RESULTS_DIR / filename
-    if filepath.exists():
-        return FileResponse(str(filepath), filename=filepath.name)
-    return JSONResponse({"error": "Archivo no encontrado."}, status_code=404)
+    filepath = resolve_download_path(filename)
+    if filepath is None:
+        return JSONResponse({"error": "Archivo no encontrado."}, status_code=404)
+    return FileResponse(str(filepath), filename=filepath.name)
