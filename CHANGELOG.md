@@ -1,0 +1,37 @@
+# Changelog
+
+All notable changes to PALET are recorded here, one entry per work package
+of the PALET 2.0 refactor (see `docs/PALET_auditoria_plan_mejora.tex`).
+
+## WP0 — Hygiene and safety net (2026-11-11)
+
+Branch `refactor/palet-2`, starting from tag `v1.0-pre-audit`.
+
+### Fixed
+- `escape_latex` escaped its own output (`R&D` became `R\textbackslash{}&D`); it now works in a single pass.
+- PRISMA `included` counted a paper once per research question; it now counts unique papers (also in the GUI summary).
+- The report, the CLI and MAP read a non-existent `unmatched` key, so unmatched papers always showed as zero.
+- A failed MAP analysis was counted as "not relevant". Results now carry a `status`; failures go to a separate `errors` list and are shown apart in PRISMA, the report, the CLI and the GUI.
+- A failed synthesis or gap analysis was printed in the report as if it were content; the report now says it could not be generated.
+- Search failures (HTTP or network) looked like "no results" or silently truncated the corpus; they now raise `SearchError`. Error messages never include the request URL, which carries the API key.
+- OpenAlex pagination stopped after the first page (page size 200 against an API maximum of 100).
+- `/api/download` served any file on disk; it now serves only `results/`, `runs/` and `prompts/seed_*.txt`.
+- BibTeX export crashed on records without authors or title and wrote `nan` for empty fields.
+- The GUI treated the gap analysis as a list; detected gaps are now counted and listed.
+
+### Changed
+- Base model is now `claude-opus-5-5` for every phase (was `claude-sonnet-4-6`). Sampling parameters are no longer sent to it and output-token ceilings were raised to leave room for thinking.
+- All model calls go through `palet.llm.complete()`.
+- Model IDs, prices, token limits and the OpenAlex page size live in `palet.toml` (loaded by `palet/config.py`); none is hardcoded.
+- Library code raises exceptions (`palet.errors`) instead of calling `sys.exit`; the Anthropic client is created on first use.
+- OpenAlex requests send `OPENALEX_API_KEY`; the contact e-mail is read from `.env` and no longer hardcoded.
+- Obsolete modules, prompts and smoke scripts moved to `legacy/`; `synthesis_system.txt` renamed to `synthesis_system_v1.txt`.
+
+### Added
+- `palet/` package: `config`, `errors`, `llm`.
+- Model catalogue in `palet.toml`, `GET /api/models`, a model selector in the dashboard and `--model` on the command line.
+- `tests/` with 190 tests (plus 5 strict `xfail` tests documenting known weaknesses for WP2 and WP4), `pyproject.toml` with pytest and ruff configuration, and a GitHub Actions workflow.
+- `.env.example` brought up to date.
+
+### Acceptance
+Full pipeline run on 2026-11-11 with `prompts/seed_isabel.txt`, `--max-results 10`, model `claude-opus-5-5`: completed without errors, 37-page PDF. Details in `docs/sesiones/2026-11-11_wp0_fable52.md`.
