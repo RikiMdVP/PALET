@@ -1,0 +1,65 @@
+{
+  "_comment": "Hand-built fixture that follows the OpenAlex /works response schema (not a recorded response). Titles, authors and DOIs are fictitious.",
+  "meta": {"count": 4, "db_response_time_ms": 20, "page": 1, "per_page": 100},
+  "results": [
+    {
+      "id": "https://openalex.org/W1000000001",
+      "doi": "https://doi.org/10.1234/EXAMPLE.2021.001",
+      "title": "Green jobs & regional labour markets in the EU",
+      "publication_year": 2021,
+      "type": "article",
+      "cited_by_count": 42,
+      "authorships": [
+        {"author": {"id": "https://openalex.org/A1", "display_name": "Ana Example"}},
+        {"author": {"id": "https://openalex.org/A2", "display_name": "Bruno Sample"}}
+      ],
+      "primary_location": {"source": {"id": "https://openalex.org/S1", "display_name": "Journal of Regional Examples"}},
+      "open_access": {"is_oa": true, "oa_status": "gold"},
+      "concepts": [
+        {"display_name": "Employment"}, {"display_name": "Green economy"}, {"display_name": "Economics"},
+        {"display_name": "European union"}, {"display_name": "Labour economics"}, {"display_name": "Sixth concept"}
+      ],
+      "abstract_inverted_index": {"Green": [0], "jobs": [1, 5], "create": [2], "new": [3], "regional": [4]}
+    },
+    {
+      "id": "https://openalex.org/W1000000002",
+      "doi": null,
+      "title": "Automation and skills: a review",
+      "publication_year": 2019,
+      "type": "review",
+      "cited_by_count": 0,
+      "authorships": [],
+      "primary_location": null,
+      "open_access": {"is_oa": false},
+      "concepts": [],
+      "abstract_inverted_index": null
+    },
+    {
+      "id": "https://openalex.org/W1000000003",
+      "doi": "https://doi.org/10.1234/example.2023.007",
+      "title": "Just transition in coal regions",
+      "publication_year": 2023,
+      "type": "article",
+      "cited_by_count": 7,
+      "authorships": [
+        {"author": null},
+        {"author": {"id": "https://openalex.org/A3", "display_name": "Carla Specimen"}}
+      ],
+      "primary_location": {"source": null},
+      "open_access": null,
+      "concepts": [{"display_name": "Coal"}, {"display_name": null}],
+      "abstract_inverted_index": {}
+    },
+    {
+      "id": "https://openalex.org/W1000000004",
+      "doi": "https://doi.org/10.1234/example.2020.099",
+      "title": null,
+      "publication_year": null,
+      "type": "article",
+      "authorships": [{"author": {"display_name": "Dario Placeholder"}}],
+      "primary_location": {"source": {"display_name": "Untitled Letters"}},
+      "open_access": {"is_oa": false},
+      "abstract_inverted_index": {"Only": [0], "abstract": [1]}
+    }
+  ]
+}
