@@ -1,0 +1,78 @@
+# DRAFT protocol for the ISABEL chapter re-screening.
+# Source of truth for decisions: docs/DECISIONES_METODO.md
+# Schema will be formalised in WP1/WP2 (palet/models.py :: Protocol). Fable may adapt field names to the final schema.
+version: 1
+status: draft            # draft -> approved (set approved_by/approved_at when Ricardo + Fernando approve)
+title: "Policies for job creation and destruction (JCD) linked to the EU twin transition"
+approved_by: null
+approved_at: null
+
+research_questions:      # FROZEN. Only humans may edit.
+  RQ1: "What economic-policy recommendations does the literature formulate to mitigate job destruction and boost job creation associated with the green transition in the EU?"
+  RQ2: "What recommendations does the literature provide regarding the impact of digitalisation and artificial intelligence on JCD in the EU?"
+  RQ3: "What cohesion or smart-specialisation policies does the evidence suggest to address job creation and destruction linked to the green and digital transition in EU regions?"
+  RQ4: "Which initial-education and lifelong-learning models are most effective for adapting green and digital skills?"
+  RQ5: "What role do immigration and labour mobility play in filling skill gaps during the transition?"
+  RQ6: "How should just-transition policies be designed to prevent green and digital discontent in territories that depend on fossil fuels or have low levels of digitalisation?"
+  RQ7: "What knowledge gaps persist regarding the measurement and forecasting of JCD and the effectiveness of the cited policies?"
+
+research_questions_original:
+  RQ3: "What cohesion or smart-specialisation policies does the evidence suggest?"
+
+assignment_mode: multi
+
+criteria:
+  - id: IC1
+    kind: include
+    dimension: context
+    rule: "Empirical or policy focus on EU-27 member states or their regions, the United Kingdom, or EFTA countries (Iceland, Liechtenstein, Norway, Switzerland). Multi-country or global studies qualify only if they report results specific to these countries or to the EU."
+  - id: IC2
+    kind: include
+    dimension: concept
+    rule: "Addresses employment, jobs, job creation or destruction, skills, labour markets, or labour mobility/migration of workers."
+  - id: IC3
+    kind: include
+    dimension: concept
+    rule: "Linked to the green transition (decarbonisation, energy transition, climate policy, just transition) and/or the digital transition (digitalisation, automation, artificial intelligence, ICT, Industry 4.0)."
+  - id: IC4
+    kind: include
+    dimension: study_type
+    rule: "Peer-reviewed journal article or review."
+  - id: EC1
+    kind: exclude
+    dimension: context
+    rule: "Exclusively non-European setting (e.g., China, India, Peru, Russia, USA, Western Balkans without explicit EU framing) without EU- or Europe-specific results."
+  - id: EC2
+    kind: exclude
+    dimension: concept
+    rule: "No labour-market dimension (e.g., purely environmental, technical, fiscal or financial analysis)."
+  - id: EC3
+    kind: exclude
+    dimension: concept
+    rule: "No link to the green or digital transition (e.g., general regional convergence or cohesion analysis without a transition component)."
+  # NOTE: policy recommendations are NOT required at title/abstract stage; checked at extraction.
+
+year_from: 2013
+year_to: 2025
+languages: [en, es]
+document_types: [article, review]
+
+sources:
+  - id: scopus_2025_export
+    type: manual_import
+    file: data/raw/isabel_chapter_2025/Final_Fernando_3.1.csv
+    platform: "Scopus web export"
+    exported_at: "2025-05 (exact date unknown)"
+    query_string: null      # original string not archived; try to recover from Scopus search history
+  - id: openalex_supplementary_rq4
+    type: openalex
+    field: title_and_abstract
+    applies_to_rqs: [RQ4]
+    status: to_be_defined   # concept blocks to be proposed in WP2/WP3 and approved by humans
+  - id: openalex_supplementary_rq5
+    type: openalex
+    field: title_and_abstract
+    applies_to_rqs: [RQ5]
+    status: to_be_defined
+
+known_items: []            # D7 pending: 20-40 DOIs considered essential by the authors
