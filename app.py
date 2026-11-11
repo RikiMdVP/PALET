@@ -301,7 +301,10 @@ def run_pipeline_thread(seed_prompt: str, params: dict):
         summary = generate_assignment_summary(map_results, rqs)
         map_results_path, map_summary_path = save_map_output(map_results, summary, se_path, arq_path)
 
-        assigned_count = sum(len(v) for k, v in summary.items() if k.startswith("RQ"))
+        from prisma_validator import count_included
+
+        # Unique papers: one assigned to several RQs is counted once.
+        assigned_count = count_included(summary)
         
         # Build per-RQ breakdown with text
         rq_breakdown = []

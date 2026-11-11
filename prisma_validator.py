@@ -10,6 +10,19 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 
+def count_included(summary: dict) -> int:
+    """Number of unique papers assigned to at least one research question.
+
+    A paper assigned to several RQs appears in several ``RQn`` lists of the
+    MAP summary, so summing the list lengths would count it more than once.
+    """
+    included_ids = set()
+    for key, paper_ids in summary.items():
+        if key.startswith('RQ'):
+            included_ids.update(str(pid) for pid in paper_ids)
+    return len(included_ids)
+
+
 def build_prisma_data(arq_data: dict, dedup_stats: dict,
                        papers_df, summary: dict) -> dict:
     """
@@ -29,10 +42,7 @@ def build_prisma_data(arq_data: dict, dedup_stats: dict,
     no_abstract       = len(summary.get('unmatched_no_abstract', []))
     not_relevant      = len(summary.get('unmatched_not_relevant', []))
 
-    included = sum(
-        len(v) for k, v in summary.items()
-        if k.startswith('RQ')
-    )
+    included = count_included(summary)
 
     return {
         'databases': db_counts,
