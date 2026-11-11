@@ -1,0 +1,11 @@
+"""Shared pytest configuration for PALET.
+
+Forces a dummy Anthropic key so that no test can ever reach the real API,
+even when a real key is exported in the shell or present in .env
+(python-dotenv does not override variables that are already set).
+"""
+
+import os
+
+os.environ["ANTHROPIC_API_KEY"] = "test-key-not-real"
+os.environ.setdefault("MPLBACKEND", "Agg")
