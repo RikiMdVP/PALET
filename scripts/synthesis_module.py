@@ -24,7 +24,7 @@ client = Anthropic(api_key=api_key)
 SYNTHESIS_SYSTEM_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
     'prompts',
-    'synthesis_system.txt'
+    'synthesis_system_v1.txt'
 )
 
 try:

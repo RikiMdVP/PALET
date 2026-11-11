@@ -178,7 +178,7 @@ palet/
 │   ├── arq_system_v3.txt   # ARQ system prompt
 │   ├── qsp_system_v2.txt   # QSP system prompt
 │   ├── map_system_v2.txt   # MAP system prompt
-│   ├── synthesis_system.txt
+│   ├── synthesis_system_v1.txt  # Synthesis system prompt
 │   └── seed_isabel.txt     # Example seed prompt (ISABEL project)
 ├── templates/
 │   └── index.html          # Web GUI template

@@ -266,7 +266,7 @@ def run_palet_pipeline(seed_prompt_file: str, output_dir: str, database: str = "
 
     except Exception as e:
         print(f"\n⚠️  Error generando reporte PDF: {e}")
-        print(f"   Puedes generarlo manualmente: python scripts/report_generator.py")
+        print(f"   Puedes generarlo manualmente: python scripts/report_generator_v2.py")
 
 
     # ====================================================================
