@@ -5,6 +5,13 @@ import sys
 import os
 
 
+def _text(value, default: str = '') -> str:
+    """Text of a CSV cell; ``default`` when the cell is empty (NaN/None)."""
+    if value is None or pd.isna(value):
+        return default
+    return str(value)
+
+
 def generate_bibtex_entry(paper: pd.Series, entry_id: str) -> str:
     """Genera entrada BibTeX para un paper."""
 
@@ -12,10 +19,10 @@ def generate_bibtex_entry(paper: pd.Series, entry_id: str) -> str:
     entry_type = "article"  # Podría mejorarse según paper type
 
     # Campos requeridos
-    title = paper.get('title', 'Untitled').replace('{', '').replace('}', '')
+    title = _text(paper.get('title'), 'Untitled').replace('{', '').replace('}', '')
 
     # Autores
-    authors = paper.get('authors', 'Unknown')
+    authors = _text(paper.get('authors'), 'Unknown')
     if authors and authors != 'Unknown':
         # Convertir "Smith, J.; Doe, A." a formato BibTeX
         author_list = authors.split(';')
@@ -28,16 +35,16 @@ def generate_bibtex_entry(paper: pd.Series, entry_id: str) -> str:
     year_str = str(int(year)) if pd.notna(year) else 'n.d.'
 
     # Journal/Source
-    journal = paper.get('source', '')
+    journal = _text(paper.get('source'))
 
     # DOI
-    doi = paper.get('doi', '')
+    doi = _text(paper.get('doi'))
 
     # Abstract
-    abstract = paper.get('abstract', '')
+    abstract = _text(paper.get('abstract'))
 
     # URL
-    url = paper.get('url', '')
+    url = _text(paper.get('url'))
 
     # Construir entrada
     bibtex = f"@{entry_type}{{{entry_id},\n"
@@ -75,7 +82,7 @@ def export_to_bibtex(csv_path: str, output_path: str) -> str:
 
     for idx, paper in df.iterrows():
         # Generar entry_id único
-        first_author = paper.get('authors', 'unknown').split(';')[0].split(',')[0].strip()
+        first_author = _text(paper.get('authors'), 'unknown').split(';')[0].split(',')[0].strip()
         year = paper.get('year')
         year_str = str(int(year)) if pd.notna(year) else 'nd'
 
