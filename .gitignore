@@ -11,6 +11,7 @@ palet_env/
 # ── Outputs generados (resultados de ejecuciones) ───────
 results/
 outputs/
+runs/
 logs/
 runs_history.json
 
