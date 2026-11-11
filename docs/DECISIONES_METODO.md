@@ -44,3 +44,11 @@ Registro de decisiones metodológicas. Cada cambio posterior se añade como nuev
 - **D1–D4 confirmadas por Fernando** (comunicado por Ricardo). El protocolo `config/protocol_isabel_chapter_v1.yaml` pasa a `status: approved` en lo que respecta a preguntas de investigación y criterios. Las cadenas de las búsquedas suplementarias (RQ4 y RQ5) siguen pendientes de definir y aprobar; cada una lleva su propio `status` en el protocolo.
 - **Búsquedas suplementarias de RQ4 y RQ5**: se incluyen en esta entrega (OpenAlex, título y resumen), según D1.
 - **D6 (validación humana a ciegas): aplazada.** Motivo (Ricardo): el capítulo es una revisión de la literatura, no una presentación de la herramienta; la validación formal (sensibilidad, especificidad, κ) se hará cuando PALET se prepare como herramienta de la tesis. Consecuencia para el capítulo: no se pueden afirmar métricas de fiabilidad; el texto debe describir el procedimiento como asistido por IA con supervisión humana (adjudicación de discrepancias y casos dudosos) y declarar como limitación que no se ha validado formalmente.
+
+## 2026-11-11 (tarde) — Cribado y búsquedas suplementarias
+
+- **Cribadores**: dos modelos distintos, `claude-opus-5-5` (A) y `claude-sonnet-5-5` (B), con el mismo prompt (`prompts/screen_system_v1.txt`). Solo es firme lo que ambos deciden igual; discrepancias, dudas y errores van a adjudicación humana. Configurado en `palet.toml`, sección `[screening]`.
+- **Regla de decisión** (en código, `palet/screening.py`): se excluye si falla un criterio de inclusión o se cumple uno de exclusión con cita verificada; se incluye si se cumplen todos los de inclusión con cita verificada y ninguno de exclusión; en cualquier otro caso, dudoso. Los criterios de tipo de documento, idioma y periodo se comprueban con los metadatos, no con el modelo. Los registros sin resumen van a decisión humana.
+- **Búsquedas suplementarias RQ4 y RQ5**: bloques de términos en el protocolo, con el bloque geográfico ampliado a los 32 países (UE-27, Reino Unido y AELC). Estado `proposed` hasta que los autores vean los recuentos y las aprueben.
+- Se añadió a cada criterio del protocolo su `reason_code` (anotación técnica; no cambia el texto de ningún criterio).
+

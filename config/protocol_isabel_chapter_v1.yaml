@@ -23,30 +23,37 @@ assignment_mode: multi
 
 criteria:
   - id: IC1
+    reason_code: WRONG_CONTEXT
     kind: include
     dimension: context
     rule: "Empirical or policy focus on EU-27 member states or their regions, the United Kingdom, or EFTA countries (Iceland, Liechtenstein, Norway, Switzerland). Multi-country or global studies qualify only if they report results specific to these countries or to the EU."
   - id: IC2
+    reason_code: WRONG_CONCEPT
     kind: include
     dimension: concept
     rule: "Addresses employment, jobs, job creation or destruction, skills, labour markets, or labour mobility/migration of workers."
   - id: IC3
+    reason_code: WRONG_PHENOMENON
     kind: include
     dimension: concept
     rule: "Linked to the green transition (decarbonisation, energy transition, climate policy, just transition) and/or the digital transition (digitalisation, automation, artificial intelligence, ICT, Industry 4.0)."
   - id: IC4
+    reason_code: WRONG_DOC_TYPE
     kind: include
     dimension: study_type
     rule: "Peer-reviewed journal article or review."
   - id: EC1
+    reason_code: WRONG_CONTEXT
     kind: exclude
     dimension: context
     rule: "Exclusively non-European setting (e.g., China, India, Peru, Russia, USA, Western Balkans without explicit EU framing) without EU- or Europe-specific results."
   - id: EC2
+    reason_code: WRONG_CONCEPT
     kind: exclude
     dimension: concept
     rule: "No labour-market dimension (e.g., purely environmental, technical, fiscal or financial analysis)."
   - id: EC3
+    reason_code: WRONG_PHENOMENON
     kind: exclude
     dimension: concept
     rule: "No link to the green or digital transition (e.g., general regional convergence or cohesion analysis without a transition component)."
@@ -64,15 +71,41 @@ sources:
     platform: "Scopus web export"
     exported_at: "2025-05 (exact date unknown)"
     query_string: null      # original string not archived; try to recover from Scopus search history
+  # Supplementary searches (decision D1). Terms inside a block are joined with OR,
+  # blocks with AND. Searched in OpenAlex on title and abstract only, with the
+  # year, language and document-type limits of this protocol.
+  # status: proposed -> approved (the search only downloads records once approved;
+  # `python -m palet search --count-only` shows the number of hits before that).
   - id: openalex_supplementary_rq4
     type: openalex
     field: title_and_abstract
     applies_to_rqs: [RQ4]
-    status: to_be_defined   # concept blocks to be proposed in WP2/WP3 and approved by humans
+    status: proposed
+    blocks:
+      education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
+                  reskilling, upskilling, retraining, apprenticeship, "skills development", "higher education"]
+      transition: &transition ["green skills", "digital skills", "green jobs", "green transition",
+                  "digital transition", "twin transition", "energy transition", "just transition",
+                  digitalisation, digitalization, automation, "artificial intelligence",
+                  decarbonisation, decarbonization]
+      labour: [employment, "labour market", "labor market", workforce, workers, jobs]
+      geography: &geography ["European Union", Europe, European, EU,
+                  Austria, Belgium, Bulgaria, Croatia, Cyprus, Czechia, "Czech Republic", Denmark, Estonia,
+                  Finland, France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg,
+                  Malta, Netherlands, Poland, Portugal, Romania, Slovakia, Slovenia, Spain, Sweden,
+                  "United Kingdom", UK, Britain, Iceland, Liechtenstein, Norway, Switzerland]
   - id: openalex_supplementary_rq5
     type: openalex
     field: title_and_abstract
     applies_to_rqs: [RQ5]
-    status: to_be_defined
+    status: proposed
+    blocks:
+      migration: [immigration, immigrants, migrants, "migrant workers", "labour migration", "labor migration",
+                  "labour mobility", "labor mobility", "skilled migration", "third country nationals",
+                  "free movement of workers"]
+      skills: ["skill shortage", "skills shortage", "skills gap", "skill gap", "labour shortage",
+               "labor shortage", "green skills", "digital skills", "green jobs"]
+      transition: *transition
+      geography: *geography
 
 known_items: []            # D7 pending: 20-40 DOIs considered essential by the authors
