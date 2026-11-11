@@ -475,11 +475,15 @@ def run_pipeline_thread(seed_prompt: str, params: dict):
             "map_summary": map_summary_path,
         }
 
-    except Exception as e:
-        pipeline_state["error"] = str(e)
-        pipeline_state["message"] = f"Error: {str(e)}"
+    except (Exception, SystemExit) as e:
+        # SystemExit is caught too: nothing may end this thread silently.
+        error_text = str(e) or type(e).__name__
+        if isinstance(e, SystemExit):
+            error_text = f"El pipeline se detuvo de forma inesperada (exit {e.code})."
+        pipeline_state["error"] = error_text
+        pipeline_state["message"] = f"Error: {error_text}"
         run_record["status"] = "error"
-        run_record["error"] = str(e)
+        run_record["error"] = error_text
         import traceback
         traceback.print_exc()
 

@@ -5,17 +5,14 @@
 import os
 import sys
 import json
-from anthropic import Anthropic
-from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+# Make the repository root importable when this file is run directly.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-api_key = os.getenv("ANTHROPIC_API_KEY")
-if not api_key:
-    print("ERROR: No se encontró ANTHROPIC_API_KEY en .env")
-    sys.exit(1)
-
-client = Anthropic(api_key=api_key)
+from palet.errors import PaletError
+from palet.llm import get_client
 
 QSP_SYSTEM_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
@@ -32,11 +29,9 @@ def load_arq_output(filepath: str) -> dict:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"ERROR: No se encontró {filepath}")
-        sys.exit(1)
-    except json.JSONDecodeError:
-        print(f"ERROR: {filepath} no es JSON válido")
-        sys.exit(1)
+        raise PaletError(f"ARQ output not found: {filepath}") from None
+    except json.JSONDecodeError as e:
+        raise PaletError(f"ARQ output is not valid JSON: {filepath} ({e})") from e
 
 
 def suggest_query_structure(keywords: list, database: str = "openalex") -> str:
@@ -73,7 +68,7 @@ Format as JSON:
 }}
 """
 
-    response = client.messages.create(
+    response = get_client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1000,
         system = QSP_SYSTEM_PROMPT,

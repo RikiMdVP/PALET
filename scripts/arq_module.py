@@ -6,19 +6,14 @@ import os
 import sys
 import json
 from datetime import datetime
-from anthropic import Anthropic
-from dotenv import load_dotenv
 
-# Cargar variables de entorno
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+# Make the repository root importable when this file is run directly.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-# Inicializar cliente Claude
-api_key = os.getenv("ANTHROPIC_API_KEY")
-if not api_key:
-    print("ERROR: No se encontró ANTHROPIC_API_KEY en .env")
-    sys.exit(1)
-
-client = Anthropic(api_key=api_key)
+from palet.errors import PaletConfigError
+from palet.llm import get_client
 
 # Cargar prompt del sistema
 prompt_system_path = os.path.join(
@@ -31,9 +26,7 @@ try:
     with open(prompt_system_path, 'r', encoding='utf-8') as f:
         SYSTEM_PROMPT = f.read()
 except FileNotFoundError:
-    print(f"ERROR: No se encontró {prompt_system_path}")
-    print("Asegúrate de haber creado el archivo prompts/arq_system_v3.txt")
-    sys.exit(1)
+    raise PaletConfigError(f"System prompt not found: {prompt_system_path}") from None
 
 
 def extract_keywords(seed_prompt: str, verbose: bool = True) -> dict:
@@ -53,7 +46,7 @@ def extract_keywords(seed_prompt: str, verbose: bool = True) -> dict:
         print(f"Longitud del prompt: {len(seed_prompt)} caracteres\n")
 
     try:
-        response = client.messages.create(
+        response = get_client().messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2000,
             system=SYSTEM_PROMPT,

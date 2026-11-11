@@ -8,17 +8,14 @@ import json
 import time
 import pandas as pd
 from datetime import datetime
-from anthropic import Anthropic
-from dotenv import load_dotenv
 
-load_dotenv()
+# Make the repository root importable when this file is run directly.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-api_key = os.getenv("ANTHROPIC_API_KEY")
-if not api_key:
-    print("ERROR: No se encontró ANTHROPIC_API_KEY en .env")
-    sys.exit(1)
-
-client = Anthropic(api_key=api_key)
+from palet.errors import PaletConfigError
+from palet.llm import get_client
 
 # Cargar system prompt
 SYNTHESIS_SYSTEM_PATH = os.path.join(
@@ -31,8 +28,7 @@ try:
     with open(SYNTHESIS_SYSTEM_PATH, 'r', encoding='utf-8') as f:
         SYNTHESIS_SYSTEM_PROMPT = f.read()
 except FileNotFoundError:
-    print(f"ERROR: No se encontró {SYNTHESIS_SYSTEM_PATH}")
-    sys.exit(1)
+    raise PaletConfigError(f"System prompt not found: {SYNTHESIS_SYSTEM_PATH}") from None
 
 # ─── Constantes ─────────────────────────────────────────────────────────────
 MAX_PAPERS_PER_RQ   = 25   # Límite de papers enviados por RQ a Claude
@@ -236,7 +232,7 @@ Generate the narrative synthesis for this Research Question following the struct
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = client.messages.create(
+            response = get_client().messages.create(
                 model=MODEL,
                 max_tokens=MAX_TOKENS_SYNTH,
                 temperature=0,
@@ -391,7 +387,7 @@ Analyze the above information to identify literature gaps across all Research Qu
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = client.messages.create(
+            response = get_client().messages.create(
                 model=MODEL,
                 max_tokens=MAX_TOKENS_GAPS,
                 temperature=0,

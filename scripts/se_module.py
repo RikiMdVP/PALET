@@ -15,12 +15,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Make the repository root importable when this file is run directly.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from palet.errors import NoResultsError, PaletError, SearchError
+
 # OpenAlex rejects page sizes above 100 (API limit since 2026).
 OPENALEX_PER_PAGE = 100
-
-
-class SearchError(RuntimeError):
-    """A database search failed. Never to be confused with 'no results'."""
 
 
 def _contact_email():
@@ -56,8 +59,7 @@ def load_qsp_output(filepath: str) -> dict:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"ERROR: No se encontró {filepath}")
-        sys.exit(1)
+        raise PaletError(f"QSP output not found: {filepath}") from None
 
 
 def search_openalex(query: str, max_results: int = 100, verbose: bool = True,
@@ -602,8 +604,9 @@ def execute_se(query: str, max_results: int = 100,
                 print(f"   ✓ PubMed: {len(df_pm)} papers")
 
     if not frames:
-        print("❌ No se encontraron resultados en ninguna base de datos.")
-        sys.exit(1)
+        raise NoResultsError(
+            f"The search returned no records in {database} for the given query and filters."
+        )
 
     df = pd.concat(frames, ignore_index=True)
     df, dedup_stats = remove_duplicates(df, verbose)  # ← desempaquetar tupla

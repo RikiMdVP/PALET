@@ -16,6 +16,13 @@ import matplotlib
 matplotlib.use('Agg')  # Backend sin GUI
 import matplotlib.pyplot as plt
 
+# Make the repository root importable when this file is run directly.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from palet.errors import PaletError
+
 
 def load_map_summary(summary_path: str) -> dict:
     """Carga resumen de MAP."""
@@ -1277,11 +1284,9 @@ def compile_pdf(tex_path: str) -> str:
             # Solo verificar que el PDF se generó
 
         except FileNotFoundError:
-            print("\nERROR: pdflatex no encontrado")
-            sys.exit(1)
+            raise PaletError("pdflatex not found: install TeX Live/MacTeX to build the PDF report") from None
         except subprocess.TimeoutExpired:
-            print("\nERROR: Timeout en compilación")
-            sys.exit(1)
+            raise PaletError(f"pdflatex timed out while compiling {tex_filename}") from None
 
     pdf_path = tex_path.replace('.tex', '.pdf')
 
@@ -1296,7 +1301,7 @@ def compile_pdf(tex_path: str) -> str:
 
         return pdf_path
     else:
-        raise RuntimeError("PDF no generado")
+        raise PaletError(f"pdflatex did not produce a PDF for {tex_filename}")
 
 
 if __name__ == "__main__":

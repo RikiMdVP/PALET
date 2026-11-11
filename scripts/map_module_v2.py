@@ -7,17 +7,14 @@ import sys
 import json
 import pandas as pd
 from datetime import datetime
-from anthropic import Anthropic
-from dotenv import load_dotenv
 
-load_dotenv()
+# Make the repository root importable when this file is run directly.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-api_key = os.getenv("ANTHROPIC_API_KEY")
-if not api_key:
-    print("ERROR: No se encontró ANTHROPIC_API_KEY en .env")
-    sys.exit(1)
-
-client = Anthropic(api_key=api_key)
+from palet.errors import PaletConfigError, PaletError
+from palet.llm import get_client
 
 # Cargar system prompt
 MAP_SYSTEM_PATH = os.path.join(
@@ -30,8 +27,7 @@ try:
     with open(MAP_SYSTEM_PATH, 'r', encoding='utf-8') as f:
         MAP_SYSTEM_PROMPT = f.read()
 except FileNotFoundError:
-    print(f"ERROR: No se encontró {MAP_SYSTEM_PATH}")
-    sys.exit(1)
+    raise PaletConfigError(f"System prompt not found: {MAP_SYSTEM_PATH}") from None
 
 # ====================================================================
 # Función para inyectar RQs en el system prompt
@@ -108,8 +104,7 @@ def load_papers(csv_path: str) -> pd.DataFrame:
         print(f"   - Sin abstract: {df['abstract'].isna().sum()}")
         return df
     except FileNotFoundError:
-        print(f"ERROR: No se encontró {csv_path}")
-        sys.exit(1)
+        raise PaletError(f"Papers CSV not found: {csv_path}") from None
 
 
 def load_research_questions(arq_path: str) -> list:
@@ -123,8 +118,7 @@ def load_research_questions(arq_path: str) -> list:
             print(f"   {i}. {rq[:80]}...")
         return rqs
     except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-        print(f"ERROR cargando RQs: {e}")
-        sys.exit(1)
+        raise PaletError(f"Could not load research questions from {arq_path}: {e}") from e
 
 
 def analyze_paper(paper_id: int, title: str, abstract: str, rqs: list,
@@ -175,7 +169,7 @@ Abstract: {abstract}"""
 
     for attempt in range(max_retries):
         try:
-            response = client.messages.create(
+            response = get_client().messages.create(
                 model="claude-sonnet-4-6",
                 max_tokens=1500,  # Aumentado para reasoning más largo
                 temperature=0,   # Nula para resultado determinista, reproducibilidad total

@@ -30,7 +30,7 @@ class FakeClient:
 
 
 def _analyze(monkeypatch, client, abstract="An abstract about jobs."):
-    monkeypatch.setattr(map_module_v2, "client", client)
+    monkeypatch.setattr(map_module_v2, "get_client", lambda: client)
     return map_module_v2.analyze_paper(
         paper_id=7, title="A paper", abstract=abstract, rqs=RQS, system_prompt="system"
     )
