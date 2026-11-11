@@ -2,6 +2,7 @@
 # Generador de reporte PDF en LaTeX - Versión mejorada
 
 import os
+import re
 import sys
 import json
 import pandas as pd
@@ -43,30 +44,31 @@ def load_seed_prompt(arq_data: dict) -> str:
     return "Seed prompt not directly available in pipeline outputs."
 
 
+_LATEX_ESCAPES = {
+    '\\': r'\textbackslash{}',
+    '&': r'\&',
+    '%': r'\%',
+    '$': r'\$',
+    '#': r'\#',
+    '_': r'\_',
+    '{': r'\{',
+    '}': r'\}',
+    '~': r'\textasciitilde{}',
+    '^': r'\^{}',
+}
+_LATEX_ESCAPE_RE = re.compile('|'.join(re.escape(char) for char in _LATEX_ESCAPES))
+
+
 def escape_latex(text: str) -> str:
-    """Escapa caracteres especiales de LaTeX."""
+    """Escape LaTeX special characters in a single pass.
+
+    A single regex pass guarantees that the output of one replacement
+    (e.g. the braces in ``\\textbackslash{}``) is never escaped again.
+    """
     if pd.isna(text):
         return ""
 
-    text = str(text)
-
-    replacements = {
-        '&': r'\&',
-        '%': r'\%',
-        '$': r'\$',
-        '#': r'\#',
-        '_': r'\_',
-        '{': r'\{',
-        '}': r'\}',
-        '~': r'\textasciitilde{}',
-        '^': r'\^{}',
-        '\\': r'\textbackslash{}',
-    }
-
-    for char, replacement in replacements.items():
-        text = text.replace(char, replacement)
-
-    return text
+    return _LATEX_ESCAPE_RE.sub(lambda m: _LATEX_ESCAPES[m.group(0)], str(text))
 
 
 def generate_temporal_distribution(papers_df: pd.DataFrame, output_dir: str) -> str:
