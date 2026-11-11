@@ -1,0 +1,33 @@
+# PALET settings: model IDs, prices and limits live here, never in the code.
+# Loaded by palet/config.py. Secrets (API keys, e-mail) go in .env instead.
+
+[models]
+# Exact Anthropic model ID used by each phase.
+arq = "claude-sonnet-4-6"
+qsp = "claude-sonnet-4-6"
+map = "claude-sonnet-4-6"
+synthesis = "claude-sonnet-4-6"
+
+[pricing]
+# Approximate conversion used only to display cost estimates in euros.
+usd_to_eur = 0.92
+
+# List prices in USD per million tokens. Verified 2026-11-11 against
+# Anthropic's published pricing; check them again when changing models.
+[pricing.models."claude-sonnet-4-6"]
+input_per_mtok = 3.0
+output_per_mtok = 15.0
+
+[limits]
+arq_max_tokens = 2000
+qsp_max_tokens = 1000
+map_max_tokens = 1500
+synthesis_max_tokens = 4000
+gaps_max_tokens = 4000
+# Papers sent to the model per research question, and characters kept per abstract.
+synthesis_max_papers_per_rq = 25
+synthesis_max_abstract_chars = 1200
+
+[search]
+# OpenAlex accepts at most 100 results per page.
+openalex_per_page = 100

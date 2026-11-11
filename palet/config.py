@@ -1,0 +1,91 @@
+"""Loader for ``palet.toml``: model IDs, prices and limits.
+
+Nothing in the code may hardcode a model ID or a price; modules ask this
+module instead. Secrets are not handled here (they live in ``.env``).
+"""
+
+import tomllib
+from functools import lru_cache
+from pathlib import Path
+
+from palet.errors import PaletConfigError
+
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "palet.toml"
+
+PHASES = ("arq", "qsp", "map", "synthesis")
+
+
+@lru_cache(maxsize=None)
+def load_config(path: str | Path = CONFIG_PATH) -> dict:
+    """Read and validate the settings file (cached per path)."""
+    path = Path(path)
+    try:
+        with open(path, "rb") as f:
+            config = tomllib.load(f)
+    except FileNotFoundError:
+        raise PaletConfigError(f"Settings file not found: {path}") from None
+    except tomllib.TOMLDecodeError as e:
+        raise PaletConfigError(f"Settings file is not valid TOML: {path} ({e})") from e
+
+    _validate(config, path)
+    return config
+
+
+def _validate(config: dict, path: Path) -> None:
+    for section in ("models", "pricing", "limits", "search"):
+        if section not in config:
+            raise PaletConfigError(f"Missing [{section}] section in {path}")
+
+    prices = config["pricing"].get("models", {})
+    for phase in PHASES:
+        model = config["models"].get(phase)
+        if not model:
+            raise PaletConfigError(f"Missing model for phase '{phase}' in {path}")
+        price = prices.get(model, {})
+        if "input_per_mtok" not in price or "output_per_mtok" not in price:
+            raise PaletConfigError(
+                f"Missing price for model '{model}' (phase '{phase}') in {path}"
+            )
+
+
+def get_model(phase: str) -> str:
+    """Exact model ID configured for a pipeline phase."""
+    models = load_config()["models"]
+    if phase not in models:
+        raise PaletConfigError(f"No model configured for phase '{phase}'")
+    return models[phase]
+
+
+def get_limit(name: str) -> int:
+    """A value from the [limits] section."""
+    limits = load_config()["limits"]
+    if name not in limits:
+        raise PaletConfigError(f"No limit named '{name}' in palet.toml")
+    return limits[name]
+
+
+def get_search_setting(name: str):
+    """A value from the [search] section."""
+    search = load_config()["search"]
+    if name not in search:
+        raise PaletConfigError(f"No search setting named '{name}' in palet.toml")
+    return search[name]
+
+
+def get_price(model: str) -> tuple[float, float]:
+    """(input, output) price in USD per million tokens for a model."""
+    prices = load_config()["pricing"].get("models", {})
+    if model not in prices:
+        raise PaletConfigError(f"No price configured for model '{model}'")
+    return prices[model]["input_per_mtok"], prices[model]["output_per_mtok"]
+
+
+def cost_usd(phase: str, input_tokens: float, output_tokens: float) -> float:
+    """Cost in USD of a call made by ``phase`` with the given token counts."""
+    input_price, output_price = get_price(get_model(phase))
+    return (input_tokens * input_price + output_tokens * output_price) / 1_000_000
+
+
+def usd_to_eur() -> float:
+    """Approximate USD→EUR rate used to display estimates."""
+    return load_config()["pricing"].get("usd_to_eur", 1.0)

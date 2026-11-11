@@ -15,6 +15,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from palet.errors import PaletConfigError
+from palet import config
 from palet.llm import get_client
 
 # Cargar system prompt
@@ -31,11 +32,11 @@ except FileNotFoundError:
     raise PaletConfigError(f"System prompt not found: {SYNTHESIS_SYSTEM_PATH}") from None
 
 # ─── Constantes ─────────────────────────────────────────────────────────────
-MAX_PAPERS_PER_RQ   = 25   # Límite de papers enviados por RQ a Claude
-MAX_ABSTRACT_CHARS  = 1200  # Truncar abstracts largos para controlar tokens
-MODEL               = "claude-sonnet-4-6"
-MAX_TOKENS_SYNTH    = 4000  # Por síntesis (una por RQ)
-MAX_TOKENS_GAPS     = 4000  # Para el análisis de gaps global
+# Valores leídos de palet.toml (sección [limits])
+MAX_PAPERS_PER_RQ   = config.get_limit("synthesis_max_papers_per_rq")   # papers enviados por RQ
+MAX_ABSTRACT_CHARS  = config.get_limit("synthesis_max_abstract_chars")  # truncado de abstracts
+MAX_TOKENS_SYNTH    = config.get_limit("synthesis_max_tokens")          # por síntesis (una por RQ)
+MAX_TOKENS_GAPS     = config.get_limit("gaps_max_tokens")               # análisis de gaps global
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -233,7 +234,7 @@ Generate the narrative synthesis for this Research Question following the struct
     for attempt in range(max_retries):
         try:
             response = get_client().messages.create(
-                model=MODEL,
+                model=config.get_model("synthesis"),
                 max_tokens=MAX_TOKENS_SYNTH,
                 temperature=0,
                 system=SYNTHESIS_SYSTEM_PROMPT,
@@ -388,7 +389,7 @@ Analyze the above information to identify literature gaps across all Research Qu
     for attempt in range(max_retries):
         try:
             response = get_client().messages.create(
-                model=MODEL,
+                model=config.get_model("synthesis"),
                 max_tokens=MAX_TOKENS_GAPS,
                 temperature=0,
                 system=SYNTHESIS_SYSTEM_PROMPT,
@@ -512,7 +513,7 @@ def run_synthesis(rqs: list, assignments: dict, papers_df: pd.DataFrame,
     gaps_tokens = gaps.get('tokens_used', {})
     total_input  = total_tokens_synth['input']  + gaps_tokens.get('input', 0)
     total_output = total_tokens_synth['output'] + gaps_tokens.get('output', 0)
-    cost_usd = round(total_input * 0.000003 + total_output * 0.000015, 4)
+    cost_usd = round(config.cost_usd("synthesis", total_input, total_output), 4)
 
     print(f"\n💰 Tokens totales síntesis: {total_input}in / {total_output}out | "
           f"Coste estimado: ${cost_usd}")

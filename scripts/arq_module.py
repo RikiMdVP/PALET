@@ -13,6 +13,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from palet.errors import PaletConfigError
+from palet import config
 from palet.llm import get_client
 
 # Cargar prompt del sistema
@@ -47,8 +48,8 @@ def extract_keywords(seed_prompt: str, verbose: bool = True) -> dict:
 
     try:
         response = get_client().messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2000,
+            model=config.get_model("arq"),
+            max_tokens=config.get_limit("arq_max_tokens"),
             system=SYSTEM_PROMPT,
             messages=[
                 {
@@ -85,9 +86,9 @@ def extract_keywords(seed_prompt: str, verbose: bool = True) -> dict:
         }
 
         # Calcular coste aproximado
-        cost_input = response.usage.input_tokens * 0.000003  # $3 per million
-        cost_output = response.usage.output_tokens * 0.000015  # $15 per million
-        result['cost_usd'] = round(cost_input + cost_output, 6)
+        result['cost_usd'] = round(
+            config.cost_usd("arq", response.usage.input_tokens, response.usage.output_tokens), 6
+        )
 
         if verbose:
             print("Extracción completada\n")

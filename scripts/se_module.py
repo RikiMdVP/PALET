@@ -20,10 +20,11 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+from palet import config
 from palet.errors import NoResultsError, PaletError, SearchError
 
-# OpenAlex rejects page sizes above 100 (API limit since 2026).
-OPENALEX_PER_PAGE = 100
+# Page size for OpenAlex requests (palet.toml, [search]; the API maximum is 100).
+OPENALEX_PER_PAGE = config.get_search_setting("openalex_per_page")
 
 
 def _contact_email():

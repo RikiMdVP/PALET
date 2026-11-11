@@ -12,6 +12,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from palet.errors import PaletError
+from palet import config
 from palet.llm import get_client
 
 QSP_SYSTEM_PATH = os.path.join(
@@ -69,8 +70,8 @@ Format as JSON:
 """
 
     response = get_client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1000,
+        model=config.get_model("qsp"),
+        max_tokens=config.get_limit("qsp_max_tokens"),
         system = QSP_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}]
     )

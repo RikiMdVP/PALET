@@ -80,11 +80,9 @@ def add_run_to_history(run_data: dict):
 def estimate_cost(seed_prompt: str, max_results: int) -> dict:
     """
     Estima el coste aproximado del pipeline completo.
-    Precios Claude Sonnet 4.5: input $3/MTok, output $15/MTok
-    IMPORTANTE: verificar precios actuales en docs.anthropic.com
+    Modelos y precios se leen de palet.toml (palet/config.py).
     """
-    INPUT_PRICE_PER_MTOK = 3.0   # USD
-    OUTPUT_PRICE_PER_MTOK = 15.0  # USD
+    from palet import config
 
     # Estimación de tokens por carácter (aprox 1 token = 4 chars en inglés)
     chars_per_token = 4
@@ -113,9 +111,22 @@ def estimate_cost(seed_prompt: str, max_results: int) -> dict:
     total_input = arq_input + qsp_input + map_input + synth_input
     total_output = arq_output + qsp_output + map_output + synth_output
 
-    cost_input = (total_input / 1_000_000) * INPUT_PRICE_PER_MTOK
-    cost_output = (total_output / 1_000_000) * OUTPUT_PRICE_PER_MTOK
+    # Cada fase se valora con el precio del modelo que tiene configurado.
+    phase_tokens = {
+        "arq": (arq_input, arq_output),
+        "qsp": (qsp_input, qsp_output),
+        "map": (map_input, map_output),
+        "synthesis": (synth_input, synth_output),
+    }
+    cost_input = sum(config.cost_usd(phase, tokens[0], 0) for phase, tokens in phase_tokens.items())
+    cost_output = sum(config.cost_usd(phase, 0, tokens[1]) for phase, tokens in phase_tokens.items())
     total_cost = cost_input + cost_output
+
+    models = sorted({config.get_model(phase) for phase in phase_tokens})
+    price_notes = [
+        f"{model}: ${config.get_price(model)[0]:g}/MTok input, ${config.get_price(model)[1]:g}/MTok output"
+        for model in models
+    ]
 
     return {
         "total_input_tokens": int(total_input),
@@ -123,8 +134,8 @@ def estimate_cost(seed_prompt: str, max_results: int) -> dict:
         "cost_input_usd": round(cost_input, 4),
         "cost_output_usd": round(cost_output, 4),
         "total_cost_usd": round(total_cost, 4),
-        "total_cost_eur": round(total_cost * 0.92, 4),  # Aproximación EUR
-        "note": "Estimación aproximada. Precios Claude Sonnet 4.5: $3/MTok input, $15/MTok output.",
+        "total_cost_eur": round(total_cost * config.usd_to_eur(), 4),  # Aproximación EUR
+        "note": "Estimación aproximada. Precios — " + "; ".join(price_notes) + ".",
         "breakdown": {
             "ARQ": {"input": int(arq_input), "output": int(arq_output)},
             "QSP": {"input": int(qsp_input), "output": int(qsp_output)},

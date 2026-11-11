@@ -14,6 +14,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from palet.errors import PaletConfigError, PaletError
+from palet import config
 from palet.llm import get_client
 
 # Cargar system prompt
@@ -170,8 +171,8 @@ Abstract: {abstract}"""
     for attempt in range(max_retries):
         try:
             response = get_client().messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=1500,  # Aumentado para reasoning más largo
+                model=config.get_model("map"),
+                max_tokens=config.get_limit("map_max_tokens"),
                 temperature=0,   # Nula para resultado determinista, reproducibilidad total
                 system=system_prompt,  # ← Con RQs inyectadas
                 messages=[{"role": "user", "content": user_message}]
