@@ -71,6 +71,12 @@ def escape_latex(text: str) -> str:
     return _LATEX_ESCAPE_RE.sub(lambda m: _LATEX_ESCAPES[m.group(0)], str(text))
 
 
+def format_share(count: int, total: int) -> str:
+    """Format ``count`` with its percentage of ``total`` for a LaTeX table cell."""
+    share = (count / total * 100) if total else 0.0
+    return f"{count} ({share:.1f}\\%)"
+
+
 def generate_temporal_distribution(papers_df: pd.DataFrame, output_dir: str) -> str:
     """Genera gráfico de barras de distribución temporal."""
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -876,16 +882,19 @@ screened, assessed for eligibility, and included in the synthesis.}
 """
 
     latex_content += f"Total papers retrieved & {stats['total_papers']} \\\\\n"
-    latex_content += f"Papers with DOI & {stats['with_doi']} ({stats['with_doi']/stats['total_papers']*100:.1f}\\%) \\\\\n"
-    latex_content += f"Papers with abstract & {stats['with_abstract']} ({stats['with_abstract']/stats['total_papers']*100:.1f}\\%) \\\\\n"
-    latex_content += f"Open Access papers & {stats['open_access']} ({stats['open_access']/stats['total_papers']*100:.1f}\\%) \\\\\n"
+    total_papers = stats['total_papers']
+    latex_content += f"Papers with DOI & {format_share(stats['with_doi'], total_papers)} \\\\\n"
+    latex_content += f"Papers with abstract & {format_share(stats['with_abstract'], total_papers)} \\\\\n"
+    latex_content += f"Open Access papers & {format_share(stats['open_access'], total_papers)} \\\\\n"
 
     if stats['year_min']:
         latex_content += f"Year range & {stats['year_min']}--{stats['year_max']} \\\\\n"
         latex_content += f"Median year & {stats['year_median']} \\\\\n"
 
-    unmatched = len(assignments.get('unmatched', []))
-    latex_content += f"Unmatched papers & {unmatched} ({unmatched/stats['total_papers']*100:.1f}\\%) \\\\\n"
+    not_relevant_ids = assignments.get('unmatched_not_relevant', [])
+    no_abstract_ids = assignments.get('unmatched_no_abstract', [])
+    latex_content += f"Not relevant to any RQ & {format_share(len(not_relevant_ids), total_papers)} \\\\\n"
+    latex_content += f"No abstract available & {format_share(len(no_abstract_ids), total_papers)} \\\\\n"
 
     latex_content += r"""\bottomrule
 \end{tabular}
@@ -1081,31 +1090,39 @@ The following papers have received the highest number of citations:
     # SECCIÓN 7: UNMATCHED PAPERS
     # ============================================================
 
-    unmatched_ids = assignments.get('unmatched', [])
+    unmatched_groups = [
+        ("Not relevant to any research question", not_relevant_ids),
+        ("No abstract available (not analysed)", no_abstract_ids),
+    ]
 
-    if unmatched_ids:
+    if any(ids for _, ids in unmatched_groups):
         latex_content += r"""\section{Unmatched Papers}
 
-The following papers could not be confidently assigned to any research question:
+The following papers were not assigned to any research question:
 
-\begin{itemize}[leftmargin=*]
 """
 
-        for paper_id in unmatched_ids:
-            try:
-                paper = papers_df.iloc[int(paper_id)]
-            except (IndexError, ValueError, KeyError):
+        for group_title, group_ids in unmatched_groups:
+            if not group_ids:
                 continue
 
-            title = escape_latex(paper.get('title', 'Untitled'))
-            authors = escape_latex(paper.get('authors', 'Unknown'))
-            year = paper.get('year', 'N/A')
+            latex_content += f"\\subsection*{{{group_title} ({len(group_ids)})}}\n\n"
+            latex_content += r"\begin{itemize}[leftmargin=*]" + "\n"
 
-            latex_content += f"\\item \\textbf{{{title}}} --- {authors} ({year})\n"
+            for paper_id in group_ids:
+                try:
+                    paper = papers_df.iloc[int(paper_id)]
+                except (IndexError, ValueError, KeyError):
+                    continue
 
-        latex_content += r"""\end{itemize}
+                title = escape_latex(paper.get('title', 'Untitled'))
+                authors = escape_latex(paper.get('authors', 'Unknown'))
+                year = paper.get('year', 'N/A')
 
-"""
+                latex_content += f"\\item \\textbf{{{title}}} --- {authors} ({year})\n"
+
+            latex_content += r"\end{itemize}" + "\n\n"
+
     # ============================================================
     # SECCIÓN 8: SÍNTESIS NARRATIVA POR RQ
     # ============================================================

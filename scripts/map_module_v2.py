@@ -378,7 +378,7 @@ def print_summary(summary: dict, rqs: list):
         print(f"\n{rq_key}: {count} papers")
         print(f"   {rq[:80]}...")
 
-    unmatched = len(assignments.get('unmatched', []))
+    unmatched = len(assignments.get('unmatched_not_relevant', []))
     unmatched_no_abstract = len(assignments.get('unmatched_no_abstract', []))
 
     print(f"\nUnmatched (no relevante): {unmatched} papers")

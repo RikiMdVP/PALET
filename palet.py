@@ -290,8 +290,10 @@ def run_palet_pipeline(seed_prompt_file: str, output_dir: str, database: str = "
         count = len(summary.get(f"RQ{i}", []))
         print(f"  RQ{i}: {count} papers - {rq[:60]}...")
 
-    unmatched = len(summary.get('unmatched', []))
-    print(f"\n  Unmatched: {unmatched} papers")
+    not_relevant = len(summary.get('unmatched_not_relevant', []))
+    no_abstract = len(summary.get('unmatched_no_abstract', []))
+    print(f"\n  Unmatched (no relevante): {not_relevant} papers")
+    print(f"  Unmatched (sin abstract): {no_abstract} papers")
 
     print(f"\nOutputs generados:")
     print(f"  - ARQ: {arq_path}")
