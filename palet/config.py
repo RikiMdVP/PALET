@@ -48,12 +48,59 @@ def _validate(config: dict, path: Path) -> None:
             )
 
 
+_model_override: str | None = None
+
+
+def set_model_override(model: str | None) -> None:
+    """Use ``model`` for every phase of the current run (None = defaults).
+
+    One pipeline runs at a time, so a process-wide override is enough; the
+    entry point that sets it is responsible for clearing it afterwards.
+    """
+    global _model_override
+    if not model:
+        _model_override = None
+        return
+    if model not in load_config()["pricing"].get("models", {}):
+        raise PaletConfigError(
+            f"Model '{model}' is not in the catalogue of palet.toml ([pricing.models])."
+        )
+    _model_override = model
+
+
+def clear_model_override() -> None:
+    """Go back to the per-phase models of palet.toml."""
+    global _model_override
+    _model_override = None
+
+
+def get_default_model() -> str:
+    """Model the dashboard preselects: the one configured for MAP."""
+    return load_config()["models"]["map"]
+
+
+def list_models() -> list[dict]:
+    """Catalogue of selectable models, current ones first."""
+    catalogue = []
+    for model_id, entry in load_config()["pricing"].get("models", {}).items():
+        catalogue.append({
+            "id": model_id,
+            "label": entry.get("label", model_id),
+            "status": entry.get("status", "current"),
+            "input_per_mtok": entry["input_per_mtok"],
+            "output_per_mtok": entry["output_per_mtok"],
+            "note": entry.get("note", ""),
+        })
+    catalogue.sort(key=lambda m: m["status"] != "current")
+    return catalogue
+
+
 def get_model(phase: str) -> str:
-    """Exact model ID configured for a pipeline phase."""
+    """Exact model ID for a pipeline phase (the run override wins, if set)."""
     models = load_config()["models"]
     if phase not in models:
         raise PaletConfigError(f"No model configured for phase '{phase}'")
-    return models[phase]
+    return _model_override or models[phase]
 
 
 def get_limit(name: str) -> int:

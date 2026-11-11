@@ -284,6 +284,41 @@ function setupCostEstimation() {
 
     textarea.addEventListener("input", update);
     maxResults.addEventListener("input", update);
+    document.getElementById("model-select").addEventListener("change", () => {
+        updateModelHint();
+        update();
+    });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Model selector
+// ══════════════════════════════════════════════════════════════════
+
+let modelCatalogue = [];
+
+async function loadModels() {
+    const select = document.getElementById("model-select");
+    try {
+        const data = await fetchJSON("/api/models");
+        modelCatalogue = data.models || [];
+        select.innerHTML = modelCatalogue.map(m => {
+            const legacy = m.status === "legacy" ? " (anterior)" : "";
+            const price = `$${m.input_per_mtok} / $${m.output_per_mtok} por MTok`;
+            return `<option value="${escapeHtml(m.id)}">${escapeHtml(m.label)}${legacy} — ${price}</option>`;
+        }).join("");
+        select.value = data.default;
+        updateModelHint();
+    } catch (err) {
+        console.error("Error loading models:", err);
+        select.innerHTML = '<option value="">Modelo por defecto (palet.toml)</option>';
+    }
+}
+
+function updateModelHint() {
+    const selected = modelCatalogue.find(m => m.id === document.getElementById("model-select").value);
+    const hint = document.getElementById("model-hint");
+    if (!selected) { hint.textContent = ""; return; }
+    hint.textContent = `${selected.id} · entrada $${selected.input_per_mtok}/MTok, salida $${selected.output_per_mtok}/MTok. ${selected.note || ""}`;
 }
 
 async function updateCostEstimate() {
@@ -299,12 +334,17 @@ async function updateCostEstimate() {
     try {
         const data = await fetchJSON("/api/estimate-cost", {
             method: "POST",
-            body: JSON.stringify({ seed_prompt: prompt, max_results: maxResults }),
+            body: JSON.stringify({
+                seed_prompt: prompt,
+                max_results: maxResults,
+                model: document.getElementById("model-select").value || null,
+            }),
         });
 
         document.getElementById("cost-usd").textContent = `$${data.total_cost_usd.toFixed(3)}`;
         document.getElementById("cost-eur").textContent = `€${data.total_cost_eur.toFixed(3)}`;
         document.getElementById("cost-tokens").textContent = formatNumber(data.total_input_tokens + data.total_output_tokens);
+        document.getElementById("cost-note-text").textContent = data.note || "Estimación aproximada.";
         card.style.display = "block";
     } catch (err) {
         console.error("Cost estimation error:", err);
@@ -385,6 +425,7 @@ async function launchPipeline() {
         max_year: parseInt(document.getElementById("max-year").value) || null,
         doc_types: docTypes,
         database: database,
+        model: document.getElementById("model-select").value || null,
         auto_accept: document.getElementById("auto-accept").checked,
     };
 
@@ -899,5 +940,6 @@ function escapeHtml(str) {
 document.addEventListener("DOMContentLoaded", () => {
     initTheme();
     setupCostEstimation();
+    loadModels();
     loadDashboard();
 });

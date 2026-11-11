@@ -20,6 +20,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 
+from palet.errors import PaletConfigError
+
 # ── Paths ────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = BASE_DIR / "scripts"
@@ -77,12 +79,20 @@ def add_run_to_history(run_data: dict):
 
 # ── Estimación de coste ──────────────────────────────────────────────────
 
-def estimate_cost(seed_prompt: str, max_results: int) -> dict:
+def estimate_cost(seed_prompt: str, max_results: int, model: Optional[str] = None) -> dict:
     """
     Estima el coste aproximado del pipeline completo.
     Modelos y precios se leen de palet.toml (palet/config.py).
     """
     from palet import config
+
+    # Con `model`, todas las fases se valoran con ese modelo.
+    def phase_model(phase):
+        return model or config.get_model(phase)
+
+    def phase_cost(phase, input_tokens, output_tokens):
+        input_price, output_price = config.get_price(phase_model(phase))
+        return (input_tokens * input_price + output_tokens * output_price) / 1_000_000
 
     # Estimación de tokens por carácter (aprox 1 token = 4 chars en inglés)
     chars_per_token = 4
@@ -118,11 +128,11 @@ def estimate_cost(seed_prompt: str, max_results: int) -> dict:
         "map": (map_input, map_output),
         "synthesis": (synth_input, synth_output),
     }
-    cost_input = sum(config.cost_usd(phase, tokens[0], 0) for phase, tokens in phase_tokens.items())
-    cost_output = sum(config.cost_usd(phase, 0, tokens[1]) for phase, tokens in phase_tokens.items())
+    cost_input = sum(phase_cost(phase, tokens[0], 0) for phase, tokens in phase_tokens.items())
+    cost_output = sum(phase_cost(phase, 0, tokens[1]) for phase, tokens in phase_tokens.items())
     total_cost = cost_input + cost_output
 
-    models = sorted({config.get_model(phase) for phase in phase_tokens})
+    models = sorted({phase_model(phase) for phase in phase_tokens})
     price_notes = [
         f"{model}: ${config.get_price(model)[0]:g}/MTok input, ${config.get_price(model)[1]:g}/MTok output"
         for model in models
@@ -135,7 +145,8 @@ def estimate_cost(seed_prompt: str, max_results: int) -> dict:
         "cost_output_usd": round(cost_output, 4),
         "total_cost_usd": round(total_cost, 4),
         "total_cost_eur": round(total_cost * config.usd_to_eur(), 4),  # Aproximación EUR
-        "note": "Estimación aproximada. Precios — " + "; ".join(price_notes) + ".",
+        "note": "Estimación aproximada (no incluye los tokens de razonamiento). Precios — " + "; ".join(price_notes) + ".",
+        "model": model or config.get_default_model(),
         "breakdown": {
             "ARQ": {"input": int(arq_input), "output": int(arq_output)},
             "QSP": {"input": int(qsp_input), "output": int(qsp_output)},
@@ -151,15 +162,22 @@ def run_pipeline_thread(seed_prompt: str, params: dict):
     """Ejecuta el pipeline PALET en un hilo separado."""
     global pipeline_state
 
+    from palet import config
+
     output_dir = str(RESULTS_DIR)
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Modelo elegido en el dashboard para esta ejecución (None = el de palet.toml).
+    config.set_model_override(params.get("model"))
+    run_model = config.get_model("map")
 
     run_record = {
         "timestamp": timestamp,
         "started_at": datetime.now().isoformat(),
         "seed_prompt_preview": seed_prompt[:300],
         "params": params,
+        "model": run_model,
         "status": "running",
         "cost_actual": None,
         "result_paths": {},
@@ -499,6 +517,7 @@ def run_pipeline_thread(seed_prompt: str, params: dict):
         traceback.print_exc()
 
     finally:
+        config.clear_model_override()
         pipeline_state["running"] = False
         run_record["finished_at"] = datetime.now().isoformat()
         add_run_to_history(run_record)
@@ -518,8 +537,18 @@ async def api_estimate_cost(request: Request):
     body = await request.json()
     seed_prompt = body.get("seed_prompt", "")
     max_results = body.get("max_results", 100)
-    estimate = estimate_cost(seed_prompt, max_results)
+    try:
+        estimate = estimate_cost(seed_prompt, max_results, model=body.get("model") or None)
+    except PaletConfigError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
     return JSONResponse(estimate)
+
+
+@app.get("/api/models")
+async def api_models():
+    """Catálogo de modelos seleccionables y modelo por defecto (palet.toml)."""
+    from palet import config
+    return JSONResponse({"default": config.get_default_model(), "models": config.list_models()})
 
 
 @app.post("/api/run")
@@ -535,7 +564,14 @@ async def api_run_pipeline(request: Request):
     if not seed_prompt:
         return JSONResponse({"error": "El seed prompt no puede estar vacío."}, status_code=400)
 
+    model = body.get("model") or None
+    if model is not None:
+        from palet import config
+        if model not in {m["id"] for m in config.list_models()}:
+            return JSONResponse({"error": f"Modelo no disponible: {model}"}, status_code=400)
+
     params = {
+        "model": model,
         "max_results": body.get("max_results", 100),
         "min_year": body.get("min_year"),
         "max_year": body.get("max_year"),

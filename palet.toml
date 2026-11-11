@@ -12,16 +12,45 @@ synthesis = "claude-opus-5-5"
 # Approximate conversion used only to display cost estimates in euros.
 usd_to_eur = 0.92
 
-# List prices in USD per million tokens. Verified 2026-11-11 against
-# Anthropic's published pricing; check them again when changing models.
+# Model catalogue: every model PALET may use, with its list price in USD per
+# million tokens. The dashboard offers these in its model selector.
+# status: "current" or "legacy". Check prices again before relying on them:
+#   https://platform.claude.com/docs/en/about-claude/pricing
 [pricing.models."claude-opus-5-5"]
+label = "Claude Opus 5.5"
+status = "current"
 input_per_mtok = 4.0
 output_per_mtok = 20.0
+note = "Verified 2026-11-11 (anthropic.com)."
+
+[pricing.models."claude-sonnet-5-5"]
+label = "Claude Sonnet 5.5"
+status = "current"
+input_per_mtok = 2.0
+output_per_mtok = 10.0
+note = "Verified 2026-11-11 (platform.claude.com)."
+
+[pricing.models."claude-haiku-5-5"]
+label = "Claude Haiku 5.5"
+status = "current"
+input_per_mtok = 0.10
+output_per_mtok = 0.50
+note = "Price for prompts up to 100K tokens (5x above that); PALET prompts are far smaller. From press coverage of the launch, 2026-11-11."
+
+[pricing.models."claude-fable-5-2"]
+label = "Claude Fable 5.2"
+status = "current"
+input_per_mtok = 8.0
+output_per_mtok = 40.0
+note = "PRICE NOT VERIFIED: single third-party source (2026-11-11). Check the official pricing page before using it."
 
 # Model used up to PALET 1.0; kept so that earlier runs can be reproduced.
 [pricing.models."claude-sonnet-4-6"]
+label = "Claude Sonnet 4.6"
+status = "legacy"
 input_per_mtok = 3.0
 output_per_mtok = 15.0
+note = "Verified 2026-11-11 (anthropic.com)."
 
 # Extra request parameters per model. Claude Opus 5.5 rejects temperature,
 # top_p and top_k (HTTP 400) and always thinks before answering, so it takes

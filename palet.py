@@ -404,9 +404,19 @@ if __name__ == "__main__":
         help='Document types (default: article review)'
     )
 
+    parser.add_argument(
+        '--model',
+        default=None,
+        help='Model ID for every phase of this run (default: the models set in palet.toml)'
+    )
+
     args = parser.parse_args()
 
     try:
+        from palet import config
+        config.set_model_override(args.model)
+        print(f"Modelo: {config.get_model('map')}")
+
         results = run_palet_pipeline(
             seed_prompt_file=args.seed_prompt,
             output_dir=args.output,
