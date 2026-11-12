@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 
+from palet import webflow
 from palet.errors import PaletConfigError
 
 # ── Paths ────────────────────────────────────────────────────────────────
@@ -37,6 +38,10 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 app = FastAPI(title="PALET GUI", version="1.0.0")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# PALET 2.0 review workflow (runs, screening, charting, report): /workflow and /api/v2/*
+app.include_router(webflow.router)
+webflow.other_job_running = lambda: pipeline_state["running"]
 
 # ── Estado global del pipeline en ejecución ──────────────────────────────
 pipeline_state = {
@@ -532,6 +537,12 @@ async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+@app.get("/workflow", response_class=HTMLResponse)
+async def workflow_page(request: Request):
+    """Dashboard of the PALET 2.0 review workflow."""
+    return templates.TemplateResponse("workflow.html", {"request": request})
+
+
 @app.post("/api/estimate-cost")
 async def api_estimate_cost(request: Request):
     body = await request.json()
@@ -557,6 +568,8 @@ async def api_run_pipeline(request: Request):
 
     if pipeline_state["running"]:
         return JSONResponse({"error": "Ya hay un pipeline en ejecución."}, status_code=409)
+    if webflow.job_state()["running"]:
+        return JSONResponse({"error": "Hay un paso de la revisión 2.0 en ejecución."}, status_code=409)
 
     body = await request.json()
     seed_prompt = body.get("seed_prompt", "").strip()

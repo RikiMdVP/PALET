@@ -3,6 +3,15 @@
 All notable changes to PALET are recorded here, one entry per work package
 of the PALET 2.0 refactor (see `docs/PALET_auditoria_plan_mejora.tex`).
 
+## Dashboard for the 2.0 workflow and one-or-two screeners — 2026-11-12
+
+### Added
+- `/workflow` page in the dashboard (link "Revisión 2.0"): status of a run, deduplication, screening with a model selector per screener, upload of the adjudication workbook, charting and report, with downloads. Each button runs the corresponding `python -m palet` command in a separate process. Steps that cost money need their estimate and an explicit confirmation, also enforced by the server. API under `/api/v2/`.
+- Screening accepts one or two screeners (`palet.toml` or `screen --screeners MODEL[,MODEL]`). With one, decisions are recorded as `single_screener` and the PRISMA diagram and the methods appendix say so.
+
+### Fixed
+- Two screeners on the same model shared cached replies, so the second pass copied the first and agreement was a spurious 100%. Each pass now has its own cache scope.
+
 ## WP7 (charting), WP9 (reporting) and WP10 (citation check) — 2026-11-12
 
 ### Added
