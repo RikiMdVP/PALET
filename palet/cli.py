@@ -254,6 +254,8 @@ def cmd_screen(args) -> int:
     run.record_protocol(protocol_path, protocol)
     settings = config.get_screening_settings()
     screeners = settings["screeners"]
+    if args.screeners:
+        screeners = config.make_screeners(args.screeners.split(","))
     records = run.read_models("records.jsonl", Record)
     if args.limit:
         records = records[:args.limit]
@@ -265,6 +267,12 @@ def cmd_screen(args) -> int:
               f"~{row['output_tokens']:,} de salida ≈ {row['cost_usd']} $")
     print(f"  Estimación total: ≈ {sum(r['cost_usd'] for r in estimate):.2f} $ "
           "(menos si parte está ya en la caché)")
+    if len(screeners) == 1:
+        print("  AVISO: un solo cribador. Sus decisiones serán firmes sin contraste; solo irán a revisión "
+              "humana los registros dudosos, con error o sin resumen.")
+    elif screeners[0]["model"] == screeners[1]["model"]:
+        print("  AVISO: los dos cribadores usan el mismo modelo; su acuerdo mide la consistencia del modelo, "
+              "no un contraste entre evaluadores distintos.")
     if args.estimate:
         return 0
 
@@ -493,6 +501,8 @@ def main(argv=None) -> int:
     p.add_argument("--workers", type=int, default=None)
     p.add_argument("--estimate", action="store_true", help="print the cost estimate and stop")
     p.add_argument("--replay", action="store_true", help="use only cached responses; never call the API")
+    p.add_argument("--screeners", default=None, metavar="MODEL[,MODEL]",
+                   help="one or two model ids for this run, instead of the screeners of palet.toml")
     p.set_defaults(func=cmd_screen)
 
     p = sub.add_parser("adjudicate", help="import the human decisions from the filled workbook")

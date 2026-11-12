@@ -329,3 +329,30 @@ def test_check_citations_command(tmp_path, capsys):
     assert "Citadas y no listadas: 1 | Listadas y no citadas: 1" in capsys.readouterr().out
     report_text = (tmp_path / "out" / "citation_check.md").read_text(encoding="utf-8")
     assert "Green et al. (1997)" in report_text and "McCann, P. (2018)" in report_text
+
+
+def test_workflow_with_a_single_screener(workspace, capsys):
+    w = workspace
+    assert cli.main(["init", "--protocol", str(w.protocol), "--label", "test", "--run-id", "t1"]) == 0
+    assert cli.main(["screen", "--run", "t1", "--screeners", "claude-sonnet-5-5"]) == 0
+    out = capsys.readouterr().out
+    assert "AVISO: un solo cribador" in out
+    assert w.model.calls == 3                                   # 3 records x 1 screener
+    finals = _finals(w.run_dir)
+    assert finals["10.1/include"].decided_by == "single_screener"
+    assert finals["10.1/disagree"].decision == "exclude"        # nobody to disagree with: final, unchecked
+    assert cli.main(["report", "--run", "t1"]) == 0
+    appendix = (w.run_dir / "report" / "methods_appendix.md").read_text(encoding="utf-8")
+    assert "once, by a single AI model (`claude-sonnet-5-5`)" in appendix
+    assert "there was no second screener and no cross-check" in appendix
+    assert "no inter-screener agreement can be reported" in appendix
+    assert "agreement of the two models" not in appendix
+    counts = json.loads((w.run_dir / "report" / "prisma_counts.json").read_text(encoding="utf-8"))
+    assert counts["model_screeners"] == ["A:claude-sonnet-5-5"]
+
+
+def test_screeners_option_rejects_unknown_models(workspace):
+    w = workspace
+    assert cli.main(["init", "--protocol", str(w.protocol), "--label", "test", "--run-id", "t1"]) == 0
+    assert cli.main(["screen", "--run", "t1", "--screeners", "not-a-model"]) != 0
+    assert w.model.calls == 0

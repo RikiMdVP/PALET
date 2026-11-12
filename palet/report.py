@@ -73,11 +73,15 @@ def prisma_counts(run: Run, protocol: Protocol) -> dict:
     decided_by = Counter()
     for final in finals:
         key = "authors" if final.decided_by.startswith("human:") else final.decided_by
+        key = "agreement" if key == "single_screener" else key      # both: decided by the AI screening alone
         decided_by[(final.decision, key)] += 1
+    model_screeners = sorted({d.screener for d in decisions
+                              if d.screener != "metadata" and not d.screener.startswith("human:")})
     human_initials = sorted({f.decided_by.split(":", 1)[1] for f in finals if f.decided_by.startswith("human:")})
 
     return {
         "sources": sources,
+        "model_screeners": model_screeners,
         "identified": sum(s["downloaded"] or 0 for s in sources),
         "not_downloaded": sum((s["total_hits"] or 0) - (s["downloaded"] or 0) for s in sources if s["truncated"]),
         "duplicates_removed": len(duplicates),
@@ -162,7 +166,9 @@ def draw_prisma(counts: dict, path_without_extension) -> list[str]:
 
     # Included
     incl_lines = [f"Studies included in the review (n = {counts['included']})",
-                  f"By agreement of two AI screeners (n = {counts['included_by_agreement']})",
+                  (f"By agreement of two AI screeners (n = {counts['included_by_agreement']})"
+                   if len(counts.get("model_screeners", [])) != 1 else
+                   f"By a single AI screener (n = {counts['included_by_agreement']})"),
                   f"By decision of the authors (n = {counts['included_by_authors']})"]
     incl_h = 6 + 2.7 * (len(incl_lines) - 1)
     incl_y = screen_y - 9 - incl_h
@@ -315,7 +321,7 @@ def checklist_rows(counts: dict, has_assignments: bool) -> list[list]:
             "Full strings and limits of the supplementary searches: methods appendix, section A."
             + ("" if all(s["query_string"] for s in counts["sources"]) else
                " The string of the original Scopus search was not archived and cannot be reported: state this.")),
-        9: ("Material available", "Selection process (two AI screeners, decision rule, adjudication by the authors): "
+        9: ("Material available", "Selection process (AI screening, decision rule, adjudication by the authors): "
             "methods appendix, section D."),
         10: ("Material available" if has_assignments else "Authors to complete",
              "Charting from titles and abstracts by one AI model with verified quotes: methods appendix, section E."
@@ -401,9 +407,13 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
             f"{counts['duplicates_removed']} duplicate record(s) were removed.", ""]
 
     out += ["## D. Selection of sources of evidence", ""]
+    single = len(screeners) == 1
+    by_ai = "the single AI screener" if single else "agreement of the two models"
     if screeners:
         models = list(dict.fromkeys(s["model"] for s in screeners))
-        if len(models) == 1:
+        if len(screeners) == 1:
+            who = f"once, by a single AI model (`{models[0]}`),"
+        elif len(models) == 1:
             who = f"twice, in two separate passes of the same AI model (`{models[0]}`),"
         else:
             who = "independently by two AI models (" + " and ".join(f"`{m}`" for m in models) + ")"
@@ -418,13 +428,16 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
             "criterion is not met or an exclusion criterion applies; include if every inclusion criterion "
             "is met with a verified quote and no exclusion criterion applies; otherwise unclear. "
             "Document type, language and period were checked against the bibliographic metadata.", "",
-            "A decision was final only when both models reached it. Records on which the models disagreed, "
-            "records either model found unclear, and records without an abstract were decided by the authors.", "",
+            ("The outcome of that rule was final: there was no second screener and no cross-check. Only "
+             "records the model found unclear and records without an abstract were decided by the authors."
+             if single else
+             "A decision was final only when both models reached it. Records on which the models disagreed, "
+             "records either model found unclear, and records without an abstract were decided by the authors."), "",
             "| | Records |", "|---|---|",
             f"| Screened | {counts['screened']} |",
             f"| Excluded from metadata | {counts['excluded_by_metadata']} |",
-            f"| Included by agreement of the two models | {counts['included_by_agreement']} |",
-            f"| Excluded by agreement of the two models | {counts['excluded_by_agreement']} |",
+            f"| Included by {by_ai} | {counts['included_by_agreement']} |",
+            f"| Excluded by {by_ai} | {counts['excluded_by_agreement']} |",
             f"| Decided by the authors | {counts['decided_by_authors']} "
             f"({counts['included_by_authors']} included, {counts['excluded_by_authors']} excluded) |",
             f"| Awaiting the authors' decision | {counts['pending']} |", ""]
@@ -478,8 +491,11 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
             "- AI models were used to screen records against pre-specified criteria and to chart included "
             "studies. They were not used to decide the criteria, the research questions or the synthesis.",
             "- The AI-assisted screening was **not validated against independent human screening** of a "
-            "sample; its sensitivity and precision are therefore unknown. Agreement between the two models "
-            "is reported instead, and all uncertain or contested records were decided by the authors.",
+            "sample; its sensitivity and precision are therefore unknown. "
+            + ("A single AI screener was used, so no inter-screener agreement can be reported; only records "
+               "it found unclear were decided by the authors." if single else
+               "Agreement between the two models "
+               "is reported instead, and all uncertain or contested records were decided by the authors."),
             "- Screening and charting used titles, keywords and abstracts only. Studies whose relevance is "
             "apparent only in the full text may have been excluded, and charted contributions reflect "
             "what the abstract states.",

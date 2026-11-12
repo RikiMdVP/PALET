@@ -322,3 +322,26 @@ def test_two_screeners_with_the_same_model_are_two_separate_passes(monkeypatch, 
     again, finals_again, _ = screen_records(PROTOCOL, [RECORD], screeners, workers=1)
     assert len(calls) == 2
     assert [d.model_dump() for d in again] == [d.model_dump() for d in decisions]
+
+
+def test_a_single_screener_decides_alone_and_says_so(monkeypatch):
+    def create(**kwargs):
+        text = reply(IC2="unclear") if "10.1/unsure" in kwargs["messages"][0]["content"] else reply()
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)],
+                               usage=SimpleNamespace(input_tokens=2000, output_tokens=900), stop_reason="end_turn")
+
+    monkeypatch.setattr(llm, "get_client", lambda: SimpleNamespace(messages=SimpleNamespace(create=create)))
+    records = [RECORD, RECORD.model_copy(update={"record_id": "10.1/unsure"})]
+    decisions, finals, _ = screen_records(PROTOCOL, records, [{"name": "A", "model": "claude-sonnet-5-5"}], workers=1)
+    assert len(decisions) == 2
+    assert finals[0].decision == "include" and finals[0].decided_by == "single_screener"
+    assert finals[1].decision == "pending" and finals[1].pending_reason == "the screener was unsure"
+    assert agreement(decisions)["records_compared"] == 0
+
+
+def test_screening_needs_one_or_two_screeners():
+    from palet.errors import PaletConfigError
+    three = [{"name": n, "model": "claude-sonnet-5-5"} for n in "ABC"]
+    for screeners in ([], three):
+        with pytest.raises(PaletConfigError):
+            screen_records(PROTOCOL, [RECORD], screeners)

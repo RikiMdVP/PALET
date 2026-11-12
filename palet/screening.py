@@ -285,8 +285,10 @@ def combine(record_id: str, decisions: list[ScreeningDecision]) -> FinalDecision
                              decided_by="pending", pending_reason=metadata.notes, screener_decisions=summary)
 
     outcomes = {d.decision for d in decisions}
+    # With one screener there is nothing to agree with: the record says so.
+    how = "agreement" if len(decisions) > 1 else "single_screener"
     if outcomes == {"include"}:
-        return FinalDecision(record_id=record_id, decision="include", decided_by="agreement",
+        return FinalDecision(record_id=record_id, decision="include", decided_by=how,
                              screener_decisions=summary)
     if outcomes == {"exclude"}:
         # Prefer a reason that every screener found; fall back to any reason given.
@@ -295,12 +297,13 @@ def combine(record_id: str, decisions: list[ScreeningDecision]) -> FinalDecision
         candidates = shared or set.union(*per_screener)
         return FinalDecision(record_id=record_id, decision="exclude",
                              reason_code=_first_by_precedence(sorted(candidates)),
-                             reasons_shared=bool(shared), decided_by="agreement", screener_decisions=summary)
+                             reasons_shared=bool(shared) if len(decisions) > 1 else None,
+                             decided_by=how, screener_decisions=summary)
 
     if "error" in outcomes:
         why = "a screener failed"
     elif "unclear" in outcomes:
-        why = "at least one screener was unsure"
+        why = "at least one screener was unsure" if len(decisions) > 1 else "the screener was unsure"
     else:
         why = "screeners disagree"
     return FinalDecision(record_id=record_id, decision="pending", decided_by="pending",
@@ -316,8 +319,8 @@ def screen_records(protocol: Protocol, records: list[Record], screeners: list[di
     """
     from palet.runs import sha256_text
 
-    if len(screeners) < 2:
-        raise PaletConfigError("Screening needs at least two independent screeners")
+    if not 1 <= len(screeners) <= 2:
+        raise PaletConfigError("Screening needs one or two screeners")
     system_prompt = build_system_prompt(protocol)
     prompt_sha = sha256_text(system_prompt)
     llm.get_client() if not llm._settings["replay"] else None      # fail early, before the pool

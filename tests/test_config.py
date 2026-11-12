@@ -105,3 +105,19 @@ def test_no_model_id_or_price_hardcoded(path):
     source = path.read_text(encoding="utf-8")
     assert MODEL_ID_RE.findall(source) == []
     assert PRICE_RE.findall(source) == []
+
+
+def test_make_screeners_checks_number_and_catalogue():
+    from palet import config
+    from palet.errors import PaletConfigError
+    assert config.make_screeners(["claude-sonnet-5-5"]) == [{"name": "A", "model": "claude-sonnet-5-5"}]
+    assert [s["name"] for s in config.make_screeners(["claude-opus-5-5", " claude-sonnet-5-5 "])] == ["A", "B"]
+    for bad in ([], ["a", "b", "c"], ["not-a-model"]):
+        with pytest.raises(PaletConfigError):
+            config.make_screeners(bad)
+
+
+def test_default_screeners_are_two_different_models():
+    from palet import config
+    models = [s["model"] for s in config.get_screening_settings()["screeners"]]
+    assert models == ["claude-opus-5-5", "claude-sonnet-5-5"]

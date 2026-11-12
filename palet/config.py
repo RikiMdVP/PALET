@@ -122,7 +122,21 @@ def get_screening_settings() -> dict:
                 f"Screener '{screener.get('name')}' uses a model that is not in the catalogue: "
                 f"{screener.get('model')}"
             )
+    if not 1 <= len(screeners) <= 2:
+        raise PaletConfigError(f"Screening needs one or two screeners; palet.toml defines {len(screeners)}")
     return {"screeners": [dict(s) for s in screeners], "workers": screening.get("workers", 4)}
+
+
+def make_screeners(models: list[str]) -> list[dict]:
+    """Screeners A (and B) for the given model ids, checked against the catalogue."""
+    models = [m.strip() for m in models if m and m.strip()]
+    if not 1 <= len(models) <= 2:
+        raise PaletConfigError(f"Screening needs one or two screeners; {len(models)} given")
+    catalogue = load_config()["pricing"].get("models", {})
+    for model in models:
+        if model not in catalogue:
+            raise PaletConfigError(f"Model not in the catalogue of palet.toml: {model}")
+    return [{"name": name, "model": model} for name, model in zip("AB", models)]
 
 
 def get_assignment_model() -> str:
