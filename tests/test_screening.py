@@ -87,7 +87,7 @@ def test_quote_verification():
 # ── Decision rule ───────────────────────────────────────────────────────────
 
 def test_all_inclusions_met_and_no_exclusion_applies_is_include():
-    assert decide(PROTOCOL, judgements()) == ("include", None, "")
+    assert decide(PROTOCOL, judgements()) == ("include", None, "", [])
 
 
 @pytest.mark.parametrize("overrides,reason", [
@@ -98,17 +98,18 @@ def test_all_inclusions_met_and_no_exclusion_applies_is_include():
     ({"IC3": "no", "EC1": ("yes", "coal mine closures in Silesia, Poland")}, "WRONG_CONTEXT"),
 ])
 def test_exclusion_takes_the_first_reason_by_precedence(overrides, reason):
-    decision, code, _ = decide(PROTOCOL, judgements(**overrides))
+    decision, code, _, failed = decide(PROTOCOL, judgements(**overrides))
     assert (decision, code) == ("exclude", reason)
+    assert failed[0] == reason and len(failed) == len(set(failed))
 
 
 def test_any_doubt_makes_the_record_unclear_never_excluded():
-    decision, code, notes = decide(PROTOCOL, judgements(IC1="unclear"))
+    decision, code, notes, _ = decide(PROTOCOL, judgements(IC1="unclear"))
     assert (decision, code) == ("unclear", None) and "IC1: unclear" in notes
 
 
 def test_a_yes_without_a_verified_quote_does_not_count():
-    decision, _, notes = decide(PROTOCOL, judgements(verified=False))
+    decision, _, notes, _ = decide(PROTOCOL, judgements(verified=False))
     assert decision == "unclear" and "quote not found" in notes
     # An exclusion criterion answered "yes" with an invented quote cannot exclude.
     invented = judgements(EC1=("yes", "the study covers only China"))
@@ -221,6 +222,7 @@ def test_persistent_failure_is_an_error_not_an_exclusion(monkeypatch):
 
 def sd(screener, decision, reason=None, notes=""):
     return ScreeningDecision(record_id="r1", screener=screener, decision=decision, reason_code=reason,
+                             failed_reasons=[reason] if reason and decision == "exclude" else [],
                              notes=notes, decided_at="2026-01-01T00:00:00+00:00")
 
 
@@ -236,6 +238,21 @@ def sd(screener, decision, reason=None, notes=""):
 def test_only_agreement_is_final(a, b, expected):
     final = combine("r1", [sd("A:m1", *a), sd("B:m2", *b)])
     assert (final.decision, final.reason_code, final.decided_by) == expected
+
+
+def test_exclusion_reason_prefers_the_one_both_screeners_found():
+    def with_reasons(screener, failed):
+        return ScreeningDecision(record_id="r1", screener=screener, decision="exclude",
+                                 reason_code=failed[0], failed_reasons=failed)
+
+    # A doubted the labour dimension and failed only the transition link; B failed both.
+    final = combine("r1", [with_reasons("A:m1", ["WRONG_PHENOMENON"]),
+                           with_reasons("B:m2", ["WRONG_CONCEPT", "WRONG_PHENOMENON"])])
+    assert (final.reason_code, final.reasons_shared) == ("WRONG_PHENOMENON", True)
+
+    # No reason in common: still excluded by both, but flagged.
+    final = combine("r1", [with_reasons("A:m1", ["WRONG_CONTEXT"]), with_reasons("B:m2", ["WRONG_CONCEPT"])])
+    assert (final.decision, final.reason_code, final.reasons_shared) == ("exclude", "WRONG_CONTEXT", False)
 
 
 def test_metadata_exclusion_is_final_and_missing_abstract_goes_to_a_person():

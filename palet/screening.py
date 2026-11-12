@@ -60,6 +60,7 @@ class ScreeningDecision(BaseModel):
     judgements: list[CriterionJudgement] = Field(default_factory=list)
     decision: Decision
     reason_code: Optional[str] = None
+    failed_reasons: list[str] = Field(default_factory=list)   # every reason this screener found
     notes: str = ""
     prompt_sha256: Optional[str] = None
     decided_at: Optional[str] = None   # None for rules applied to metadata (they have no date)
@@ -73,6 +74,7 @@ class FinalDecision(BaseModel):
     record_id: str
     decision: Literal["include", "exclude", "pending"]
     reason_code: Optional[str] = None
+    reasons_shared: Optional[bool] = None   # exclusions by agreement: did both screeners give this reason?
     decided_by: str                    # "metadata", "agreement", "human:RMVP", "pending"
     pending_reason: Optional[str] = None
     screener_decisions: dict[str, str] = Field(default_factory=dict)
@@ -143,10 +145,11 @@ def _first_by_precedence(codes: list[str]) -> str:
                                         if code in REASON_PRECEDENCE else len(REASON_PRECEDENCE), code))
 
 
-def decide(protocol: Protocol, judgements: list[CriterionJudgement]) -> tuple[str, Optional[str], str]:
+def decide(protocol: Protocol, judgements: list[CriterionJudgement]) -> tuple[str, Optional[str], str, list[str]]:
     """Apply the decision rule to verified judgements.
 
-    Returns (decision, reason_code, notes). The rule favours sensitivity:
+    Returns (decision, reason_code, notes, all failed reasons). The rule
+    favours sensitivity:
 
     * exclude  — an inclusion criterion is "no", or an exclusion criterion is
                  "yes" with a verified quote;
@@ -171,11 +174,12 @@ def decide(protocol: Protocol, judgements: list[CriterionJudgement]) -> tuple[st
         elif criterion.kind == "exclude" and judgement.met == "yes":
             failing.append(reason_for(criterion))
 
+    failing = sorted(set(failing), key=lambda code: (_first_by_precedence([code, *failing]) != code, code))
     if failing:
-        return "exclude", _first_by_precedence(failing), ""
+        return "exclude", _first_by_precedence(failing), "", failing
     if doubts:
-        return "unclear", None, "; ".join(doubts)
-    return "include", None, ""
+        return "unclear", None, "; ".join(doubts), []
+    return "include", None, "", []
 
 
 def metadata_decision(protocol: Protocol, record: Record) -> Optional[ScreeningDecision]:
@@ -254,9 +258,9 @@ def screen_record(protocol: Protocol, record: Record, screener_name: str, model:
 
         for judgement in judgements:
             judgement.quote_verified = quote_is_in_text(judgement.evidence_quote, text)
-        decision, reason, notes = decide(protocol, judgements)
+        decision, reason, notes, failed = decide(protocol, judgements)
         return ScreeningDecision(record_id=record.record_id, screener=screener, judgements=judgements,
-                                 decision=decision, reason_code=reason, notes=notes,
+                                 decision=decision, reason_code=reason, failed_reasons=failed, notes=notes,
                                  prompt_sha256=prompt_sha256,
                                  # Date of the model reply, so a replayed run is identical.
                                  decided_at=response.created_at or _now())
@@ -285,9 +289,13 @@ def combine(record_id: str, decisions: list[ScreeningDecision]) -> FinalDecision
         return FinalDecision(record_id=record_id, decision="include", decided_by="agreement",
                              screener_decisions=summary)
     if outcomes == {"exclude"}:
-        reason = _first_by_precedence([d.reason_code for d in decisions if d.reason_code])
-        return FinalDecision(record_id=record_id, decision="exclude", reason_code=reason,
-                             decided_by="agreement", screener_decisions=summary)
+        # Prefer a reason that every screener found; fall back to any reason given.
+        per_screener = [set(d.failed_reasons or ([d.reason_code] if d.reason_code else [])) for d in decisions]
+        shared = set.intersection(*per_screener) if per_screener else set()
+        candidates = shared or set.union(*per_screener)
+        return FinalDecision(record_id=record_id, decision="exclude",
+                             reason_code=_first_by_precedence(sorted(candidates)),
+                             reasons_shared=bool(shared), decided_by="agreement", screener_decisions=summary)
 
     if "error" in outcomes:
         why = "a screener failed"

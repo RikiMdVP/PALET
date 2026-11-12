@@ -172,11 +172,12 @@ def _write_screening_outputs(run: Run, records, decisions, finals) -> None:
     with open(run.file("screening_summary.csv"), "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
         writer.writerow(["record_id", "title", "year", "source_title", "found_by", "decision", "reason_code",
-                         "decided_by", "pending_reason", "screeners"])
+                         "reasons_shared", "decided_by", "pending_reason", "screeners"])
         for final in finals:
             record = by_id[final.record_id]
             writer.writerow([record.record_id, record.title, record.year, record.source_title,
                              "; ".join(record.found_by_queries), final.decision, final.reason_code or "",
+                             "" if final.reasons_shared is None else final.reasons_shared,
                              final.decided_by, final.pending_reason or "",
                              "; ".join(f"{k}={v}" for k, v in final.screener_decisions.items())])
     status = {"include": "ta_included", "exclude": "ta_excluded", "pending": "ta_unclear"}

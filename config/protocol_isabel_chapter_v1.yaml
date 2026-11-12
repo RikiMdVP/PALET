@@ -94,6 +94,32 @@ sources:
                   Finland, France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg,
                   Malta, Netherlands, Poland, Portugal, Romania, Slovakia, Slovenia, Spain, Sweden,
                   "United Kingdom", UK, Britain, Iceland, Liechtenstein, Norway, Switzerland]
+  # Narrower alternatives for RQ4 (the first string returned 1,287 hits on 2026-11-12).
+  # Only ONE of the three RQ4 strings should end up approved.
+  - id: openalex_supplementary_rq4_b       # without "higher education"
+    type: openalex
+    field: title_and_abstract
+    applies_to_rqs: [RQ4]
+    status: proposed
+    blocks:
+      education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
+                  reskilling, upskilling, retraining, apprenticeship, "skills development"]
+      transition: *transition
+      labour: [employment, "labour market", "labor market", workforce, workers, jobs]
+      geography: *geography
+  - id: openalex_supplementary_rq4_c       # without "higher education"; transition terms only (no automation / AI)
+    type: openalex
+    field: title_and_abstract
+    applies_to_rqs: [RQ4]
+    status: proposed
+    blocks:
+      education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
+                  reskilling, upskilling, retraining, apprenticeship, "skills development"]
+      transition: ["green skills", "digital skills", "green jobs", "green transition", "digital transition",
+                   "twin transition", "energy transition", "just transition",
+                   digitalisation, digitalization, decarbonisation, decarbonization]
+      labour: [employment, "labour market", "labor market", workforce, workers, jobs]
+      geography: *geography
   - id: openalex_supplementary_rq5
     type: openalex
     field: title_and_abstract
