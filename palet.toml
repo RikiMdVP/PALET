@@ -69,6 +69,7 @@ map_max_tokens = 8000
 synthesis_max_tokens = 16000
 gaps_max_tokens = 16000
 screen_max_tokens = 8000
+assign_max_tokens = 8000
 # Papers sent to the model per research question, and characters kept per abstract.
 synthesis_max_papers_per_rq = 25
 synthesis_max_abstract_chars = 1200
@@ -89,3 +90,8 @@ model = "claude-opus-5-5"
 [[screening.screeners]]
 name = "B"
 model = "claude-sonnet-5-5"
+
+[assignment]
+# Model that charts the included records (research questions addressed, contribution).
+model = "claude-opus-5-5"
+

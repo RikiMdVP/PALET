@@ -125,6 +125,14 @@ def get_screening_settings() -> dict:
     return {"screeners": [dict(s) for s in screeners], "workers": screening.get("workers", 4)}
 
 
+def get_assignment_model() -> str:
+    """Model that charts included records."""
+    model = load_config().get("assignment", {}).get("model") or get_default_model()
+    if model not in load_config()["pricing"].get("models", {}):
+        raise PaletConfigError(f"The assignment model is not in the catalogue: {model}")
+    return model
+
+
 def get_search_setting(name: str):
     """A value from the [search] section."""
     search = load_config()["search"]
