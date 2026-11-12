@@ -295,3 +295,30 @@ def test_cohen_kappa():
     assert cohen_kappa(["i", "i", "e", "e"], ["i", "e", "i", "e"]) == 0.0
     assert cohen_kappa(["i", "i"], ["i", "i"]) is None          # undefined: no variation
     assert cohen_kappa([], []) is None
+
+
+def test_two_screeners_with_the_same_model_are_two_separate_passes(monkeypatch, tmp_path):
+    """Same model twice: the second screener must not be answered from the first one's cache."""
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs["model"])
+        # The second pass over the record answers differently, as an independent pass may.
+        text = reply() if len(calls) == 1 else reply(IC2="no")
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)],
+                               usage=SimpleNamespace(input_tokens=2000, output_tokens=900), stop_reason="end_turn")
+
+    monkeypatch.setattr(llm, "get_client", lambda: SimpleNamespace(messages=SimpleNamespace(create=create)))
+    llm.configure(cache_dir=tmp_path / "cache", replay=False)
+    screeners = [{"name": "A", "model": "claude-sonnet-5-5"}, {"name": "B", "model": "claude-sonnet-5-5"}]
+
+    decisions, finals, _ = screen_records(PROTOCOL, [RECORD], screeners, workers=1)
+    assert calls == ["claude-sonnet-5-5", "claude-sonnet-5-5"]
+    assert [d.screener for d in decisions] == ["A:claude-sonnet-5-5", "B:claude-sonnet-5-5"]
+    assert finals[0].decision == "pending" and finals[0].pending_reason == "screeners disagree"
+
+    # Replaying reproduces both passes from the cache, without new calls.
+    llm.configure(cache_dir=tmp_path / "cache", replay=True)
+    again, finals_again, _ = screen_records(PROTOCOL, [RECORD], screeners, workers=1)
+    assert len(calls) == 2
+    assert [d.model_dump() for d in again] == [d.model_dump() for d in decisions]

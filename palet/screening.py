@@ -235,7 +235,7 @@ def parse_judgements(reply: str, protocol: Protocol) -> list[CriterionJudgement]
 
 
 def screen_record(protocol: Protocol, record: Record, screener_name: str, model: str,
-                  system_prompt: str, prompt_sha256: str) -> ScreeningDecision:
+                  system_prompt: str, prompt_sha256: str, cache_scope: str | None = None) -> ScreeningDecision:
     """Ask one screener about one record and apply the decision rule."""
     screener = f"{screener_name}:{model}"
     text = screened_text(record)
@@ -245,7 +245,7 @@ def screen_record(protocol: Protocol, record: Record, screener_name: str, model:
         try:
             response = llm.complete(f"screen_{screener_name}", "screen_max_tokens",
                                     system=system_prompt, user=build_user_message(record),
-                                    attempt=attempt, model=model)
+                                    attempt=attempt, model=model, cache_scope=cache_scope)
             judgements = parse_judgements(response.text, protocol)
         except (ValueError, ValidationError) as e:
             last_error = f"unusable reply: {str(e)[:200]}"
@@ -332,9 +332,18 @@ def screen_records(protocol: Protocol, records: list[Record], screeners: list[di
         for screener in screeners:
             jobs.append((record, screener))
 
+    # Screeners that share a model send identical requests. Each one after the
+    # first gets its own cache scope, so that it is a separate pass and not a
+    # copy of the first one's stored reply.
+    scopes, seen_models = {}, set()
+    for screener in screeners:
+        scopes[screener["name"]] = f"screener:{screener['name']}" if screener["model"] in seen_models else None
+        seen_models.add(screener["model"])
+
     def run(job):
         record, screener = job
-        return screen_record(protocol, record, screener["name"], screener["model"], system_prompt, prompt_sha)
+        return screen_record(protocol, record, screener["name"], screener["model"], system_prompt, prompt_sha,
+                             cache_scope=scopes[screener["name"]])
 
     done = 0
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:

@@ -105,9 +105,16 @@ def usage_summary() -> dict:
     return summary
 
 
-def request_key(request: dict, attempt: int = 0) -> str:
-    """sha256 of everything that determines a response."""
-    payload = json.dumps({"request": request, "attempt": attempt}, sort_keys=True, ensure_ascii=False)
+def request_key(request: dict, attempt: int = 0, cache_scope: str | None = None) -> str:
+    """sha256 of everything that determines a response.
+
+    ``cache_scope`` separates callers that send the same request on purpose
+    (two screening passes with one model); without it the key is unchanged.
+    """
+    payload = {"request": request, "attempt": attempt}
+    if cache_scope:
+        payload["scope"] = cache_scope
+    payload = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -129,7 +136,7 @@ def _record_usage(phase, model, input_tokens, output_tokens, cached) -> None:
 
 
 def complete(phase: str, max_tokens_limit: str, system: str, user: str,
-             attempt: int = 0, model: str | None = None) -> LLMResponse:
+             attempt: int = 0, model: str | None = None, cache_scope: str | None = None) -> LLMResponse:
     """Send one system + user message for ``phase`` and return the reply text.
 
     The model, its token limit and its optional request parameters come from
@@ -140,7 +147,9 @@ def complete(phase: str, max_tokens_limit: str, system: str, user: str,
     they are: recent models may open the response with ``thinking`` blocks.
 
     Raw replies are cached under the sha256 of the request. ``attempt``
-    is part of that key, so a retry after an unusable reply is a new request.
+    is part of that key, so a retry after an unusable reply is a new request;
+    so is ``cache_scope``, for callers that need a second, separate reply to
+    an identical request.
     """
     model = model or config.get_model(phase)
     request = {
@@ -153,7 +162,7 @@ def complete(phase: str, max_tokens_limit: str, system: str, user: str,
     # parameters such as temperature with an HTTP 400.
     request.update(config.get_model_options(model))
 
-    key = request_key(request, attempt)
+    key = request_key(request, attempt, cache_scope)
     path = _cache_path(key)
 
     if path is not None and path.is_file():
