@@ -170,3 +170,11 @@ def test_rq4_variant_d_has_three_blocks_and_no_labour_block():
     assert blocks["skills"] == ["green skills", "digital skills", "green competences", "digital competences",
                                 "green jobs", "skills for the green transition", "twin transition"]
     assert blocks["geography"] == protocol.source("openalex_supplementary_rq4").model_extra["blocks"]["geography"]
+
+
+def test_chapter_supplementary_searches_are_english_only():
+    protocol = load_protocol(ROOT / "config" / "protocol_isabel_chapter_v1.yaml")
+    openalex_sources = [s for s in protocol.sources if s.type == "openalex"]
+    assert len(openalex_sources) == 5
+    assert all(s.model_extra["languages"] == ["en"] for s in openalex_sources)
+    assert protocol.languages == ["en", "es"]          # eligibility of the Scopus corpus is unchanged

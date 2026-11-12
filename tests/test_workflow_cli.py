@@ -216,6 +216,18 @@ def test_search_needs_an_approved_string_but_count_only_does_not(workspace, monk
     out = capsys.readouterr().out
     assert " 1. [2020] A sampled title — Journal S" in out and "Resultados totales (con filtros): 77" in out
     assert seen["n"] == 30 and seen["seed"] == 7 and seen["year_from"] == 2013 and seen["languages"] == ["en", "es"]
+
+    # A source can narrow the languages of the protocol, but not widen them.
+    data["sources"][-1]["languages"] = ["en"]
+    w.protocol.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    assert cli.main(["search", "--run", "t1", "--source", "oa_rq4", "--sample", "5"]) == 0
+    assert seen["languages"] == ["en"] and "idiomas en;" in capsys.readouterr().out
+    data["sources"][-1]["languages"] = ["en", "fr"]
+    w.protocol.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    assert cli.main(["search", "--run", "t1", "--source", "oa_rq4", "--count-only"]) == 1
+    assert "no admite" in capsys.readouterr().err
+    del data["sources"][-1]["languages"]
+    w.protocol.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     assert (w.run_dir / "previews" / "oa_rq4_sample_n30_seed7.csv").is_file()
     assert not (w.run_dir / "sources" / "oa_rq4.jsonl").exists()          # a sample records nothing
     assert len(Run.open(w.run_dir).manifest["searches"]) == 1

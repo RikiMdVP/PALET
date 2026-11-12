@@ -79,6 +79,7 @@ sources:
   - id: openalex_supplementary_rq4
     type: openalex
     field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
     applies_to_rqs: [RQ4]
     status: proposed
     blocks:
@@ -99,6 +100,7 @@ sources:
   - id: openalex_supplementary_rq4_b       # without "higher education"
     type: openalex
     field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
     applies_to_rqs: [RQ4]
     status: proposed
     blocks:
@@ -110,6 +112,7 @@ sources:
   - id: openalex_supplementary_rq4_c       # without "higher education"; transition terms only (no automation / AI)
     type: openalex
     field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
     applies_to_rqs: [RQ4]
     status: proposed
     blocks:
@@ -123,6 +126,7 @@ sources:
   - id: openalex_supplementary_rq4_d       # training (without "skills development") x skills block x geography; no labour block
     type: openalex
     field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
     applies_to_rqs: [RQ4]
     status: proposed
     blocks:
@@ -134,6 +138,7 @@ sources:
   - id: openalex_supplementary_rq5
     type: openalex
     field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
     applies_to_rqs: [RQ5]
     status: proposed
     blocks:

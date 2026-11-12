@@ -110,12 +110,17 @@ def cmd_search(args) -> int:
     query = build_query(blocks)
     approved = source.model_extra.get("status") == "approved"
 
+    # A source may narrow the languages of the protocol (never widen them).
+    languages = source.model_extra.get("languages") or protocol.languages
+    not_allowed = sorted(set(languages) - set(protocol.languages))
+    if not_allowed:
+        raise PaletError(f"La fuente '{source.id}' pide idiomas que el protocolo no admite: {not_allowed}")
     limits = dict(year_from=protocol.year_from, year_to=protocol.year_to,
-                  document_types=protocol.document_types, languages=protocol.languages)
+                  document_types=protocol.document_types, languages=languages)
     print(f"Fuente: {source.id}\nCadena ({len(query)} caracteres):\n  {query}\n")
     print("Filtros del protocolo aplicados (también con --count-only y --sample): "
           f"años {protocol.year_from}–{protocol.year_to}, tipos {'|'.join(protocol.document_types)}, "
-          f"idiomas {'|'.join(protocol.languages)}; búsqueda solo en título y resumen.")
+          f"idiomas {'|'.join(languages)}; búsqueda solo en título y resumen.")
     if args.show_filter:
         print(f"Filtro enviado a OpenAlex:\n  {openalex_filter(query, **limits)}\n")
 

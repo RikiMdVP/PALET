@@ -52,3 +52,8 @@ Registro de decisiones metodológicas. Cada cambio posterior se añade como nuev
 - **Búsquedas suplementarias RQ4 y RQ5**: bloques de términos en el protocolo, con el bloque geográfico ampliado a los 32 países (UE-27, Reino Unido y AELC). Estado `proposed` hasta que los autores vean los recuentos y las aprueben.
 - Se añadió a cada criterio del protocolo su `reason_code` (anotación técnica; no cambia el texto de ningún criterio).
 
+## 2026-11-12 — Búsquedas suplementarias: solo inglés; variantes de RQ4
+
+- **Idioma de las búsquedas suplementarias: solo inglés** (Ricardo). Se aplica a las fuentes OpenAlex del protocolo (`languages: [en]`). Los criterios de elegibilidad del protocolo siguen siendo inglés y español, de modo que los 6 registros en español de la exportación de Scopus siguen siendo elegibles. Esta asimetría debe declararse en el capítulo (o resolverse cambiando D3).
+- **Recuentos con filtros (2013–2025, artículo/revisión, inglés o español, título y resumen), consultados el 2026-11-12**: RQ4 = 1.287; RQ4_b (sin "higher education") = 773; RQ4_c (además sin "automation" ni "artificial intelligence") = 668; RQ4_d (formación × competencias × geografía, sin bloque de empleo) = 225; RQ5 = 55. Pendiente repetirlos solo en inglés y elegir una variante de RQ4.
+
