@@ -128,7 +128,9 @@ sources:
     field: title_and_abstract
     languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
     applies_to_rqs: [RQ4]
-    status: proposed
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-12
     blocks:
       education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
                   reskilling, upskilling, retraining, apprenticeship]
@@ -140,7 +142,9 @@ sources:
     field: title_and_abstract
     languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
     applies_to_rqs: [RQ5]
-    status: proposed
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-12
     blocks:
       migration: [immigration, immigrants, migrants, "migrant workers", "labour migration", "labor migration",
                   "labour mobility", "labor mobility", "skilled migration", "third country nationals",
