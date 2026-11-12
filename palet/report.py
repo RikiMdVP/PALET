@@ -402,8 +402,12 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
 
     out += ["## D. Selection of sources of evidence", ""]
     if screeners:
-        names = " and ".join(f"`{s['model']}`" for s in screeners)
-        out.append(f"Each record was screened independently by two AI models ({names}) through the "
+        models = list(dict.fromkeys(s["model"] for s in screeners))
+        if len(models) == 1:
+            who = f"twice, in two separate passes of the same AI model (`{models[0]}`),"
+        else:
+            who = "independently by two AI models (" + " and ".join(f"`{m}`" for m in models) + ")"
+        out.append(f"Each record was screened {who} through the "
                    "Anthropic API, with the same instructions "
                    f"(prompt sha256 `{manifest['prompts'].get('screen_system_v1', '')[:16]}…`). "
                    "The models saw only the title, the author keywords and the abstract.")
@@ -428,7 +432,10 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
         out.append(f"The two models reached the same outcome (include, exclude or unclear) on "
                    f"{stats['same_decision']} of the {stats['records_compared']} records both assessed "
                    f"({stats['percent_agreement']}%; Cohen's kappa = {stats['cohen_kappa']}). This measures "
-                   "agreement between two models, not accuracy against human screening.")
+                   "agreement between the two screening passes, not accuracy against human screening."
+                   + (" As both passes used the same model, it reflects the consistency of that model "
+                      "and cannot reveal errors it makes systematically."
+                      if len({s["model"] for s in screeners}) == 1 else ""))
         out.append("")
     if counts["exclusion_reasons"]:
         out += ["Reasons for exclusion:", ""]

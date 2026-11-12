@@ -2,6 +2,7 @@
 
 import csv
 import json
+import re
 import shutil
 from types import SimpleNamespace
 
@@ -90,6 +91,10 @@ def workspace(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "RUNS_DIR", tmp_path / "runs")
     model = FakeModel()
     monkeypatch.setattr(llm, "get_client", lambda: model)
+    # The workflow is tested with two different models, whatever palet.toml says today.
+    monkeypatch.setattr(cli.config, "get_screening_settings", lambda: {
+        "screeners": [{"name": "A", "model": "claude-opus-5-5"}, {"name": "B", "model": "claude-sonnet-5-5"}],
+        "workers": 2})
     llm.configure(cache_dir=tmp_path / "cache")
     return SimpleNamespace(tmp=tmp_path, protocol=protocol, model=model, run_dir=tmp_path / "runs" / "t1")
 
@@ -295,8 +300,10 @@ def test_search_needs_an_approved_string_but_count_only_does_not(workspace, monk
 
 def test_approve_search_edits_only_that_source(tmp_path, capsys):
     protocol = tmp_path / "protocol.yaml"
-    shutil.copy(CHAPTER_PROTOCOL, protocol)
-    before = protocol.read_text(encoding="utf-8")
+    # Start from a copy in which no supplementary search has been approved yet.
+    before = re.sub(r"status: approved\n    approved_by: [^\n]*\n    approved_at: [^\n]*", "status: proposed",
+                    CHAPTER_PROTOCOL.read_text(encoding="utf-8"))
+    protocol.write_text(before, encoding="utf-8")
     assert cli.main(["approve-search", "--protocol", str(protocol), "--source", "openalex_supplementary_rq5",
                      "--by", "RMVP; FRM"]) == 0
     from palet.protocol import load_protocol
