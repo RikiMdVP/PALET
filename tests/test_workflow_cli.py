@@ -198,8 +198,27 @@ def test_search_needs_an_approved_string_but_count_only_does_not(workspace, monk
     monkeypatch.setattr(cli, "search_openalex", fake_search)
     assert search_module is not None
 
-    assert cli.main(["search", "--run", "t1", "--source", "oa_rq4", "--count-only"]) == 0
-    assert "Resultados totales en OpenAlex: 1" in capsys.readouterr().out
+    assert cli.main(["search", "--run", "t1", "--source", "oa_rq4", "--count-only", "--show-filter"]) == 0
+    out = capsys.readouterr().out
+    assert "Resultados totales en OpenAlex (con filtros): 1" in out
+    assert "from_publication_date:2013-01-01" in out and "type:article|review" in out and "language:en|es" in out
+
+    seen = {}
+
+    def fake_sample(query, **kwargs):
+        seen.update(kwargs)
+        return [{"id": "https://openalex.org/W1", "title": "A sampled\n title", "publication_year": 2020,
+                 "type": "article", "language": "en",
+                 "primary_location": {"source": {"display_name": "Journal S"}}}], 77, "filter"
+
+    monkeypatch.setattr(cli, "sample_openalex", fake_sample)
+    assert cli.main(["search", "--run", "t1", "--source", "oa_rq4", "--sample", "30", "--seed", "7"]) == 0
+    out = capsys.readouterr().out
+    assert " 1. [2020] A sampled title — Journal S" in out and "Resultados totales (con filtros): 77" in out
+    assert seen["n"] == 30 and seen["seed"] == 7 and seen["year_from"] == 2013 and seen["languages"] == ["en", "es"]
+    assert (w.run_dir / "previews" / "oa_rq4_sample_n30_seed7.csv").is_file()
+    assert not (w.run_dir / "sources" / "oa_rq4.jsonl").exists()          # a sample records nothing
+    assert len(Run.open(w.run_dir).manifest["searches"]) == 1
     assert cli.main(["search", "--run", "t1", "--source", "oa_rq4"]) == 1          # not approved yet
     assert "aún no está aprobada" in capsys.readouterr().err
 

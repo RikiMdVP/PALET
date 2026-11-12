@@ -137,6 +137,33 @@ def search_openalex(query_id: str, query: str, *, year_from=None, year_to=None, 
     return works, execution
 
 
+def sample_openalex(query: str, *, year_from=None, year_to=None, document_types=None, languages=None,
+                    n: int = 30, seed: int = 1) -> tuple[list[dict], int, str]:
+    """Random sample of the works matching a search (fixed seed, reproducible).
+
+    Used to judge a search string before approving it. Nothing is recorded.
+    Returns (works, total hits, filter used).
+    """
+    filter_value = openalex_filter(query, year_from, year_to, document_types, languages)
+    params = {"filter": filter_value, "sample": n, "seed": seed, "per_page": min(n, 100),
+              "select": "id,doi,title,publication_year,type,language,primary_location",
+              "api_key": _api_key()}
+    try:
+        response = requests.get(OPENALEX_WORKS_URL, params=params, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+    except requests.exceptions.RequestException as e:
+        raise SearchError(f"OpenAlex sample failed: {_describe(e)}") from None
+    count_params = {"filter": filter_value, "per_page": 1, "api_key": params["api_key"]}
+    try:
+        count_response = requests.get(OPENALEX_WORKS_URL, params=count_params, timeout=60)
+        count_response.raise_for_status()
+        total = int(count_response.json().get("meta", {}).get("count", 0))
+    except requests.exceptions.RequestException as e:
+        raise SearchError(f"OpenAlex count failed: {_describe(e)}") from None
+    return data.get("results", [])[:n], total, filter_value
+
+
 def _abstract_from_inverted_index(index) -> str | None:
     if not index:
         return None

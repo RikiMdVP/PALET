@@ -130,3 +130,43 @@ def test_work_becomes_a_record():
 
     bare = search.openalex_work_to_record({"id": "https://openalex.org/W2", "title": None}, "Q")
     assert bare.title == "" and bare.abstract is None and bare.doi is None
+
+
+def test_count_only_sends_the_same_filters_as_a_download(openalex):
+    limits = dict(year_from=2013, year_to=2025, document_types=["article", "review"], languages=["en", "es"])
+    search.search_openalex("Q", "(a)", count_only=True, **limits)
+    search.search_openalex("Q", "(a)", max_records=500, **limits)
+    count_call, download_call = openalex[0], openalex[1]
+    assert count_call["filter"] == download_call["filter"]
+    for part in ("from_publication_date:2013-01-01", "to_publication_date:2025-12-31",
+                 "type:article|review", "language:en|es", "title_and_abstract.search:(a)"):
+        assert part in count_call["filter"]
+
+
+def test_sample_is_seeded_filtered_and_records_nothing(monkeypatch):
+    monkeypatch.setenv("OPENALEX_API_KEY", FAKE_KEY)
+    calls = []
+
+    def get(url, params=None, timeout=None):
+        calls.append(dict(params))
+        if "sample" in params:
+            return FakeResponse({"results": [{"id": f"W{i}", "title": f"T{i}"} for i in range(params["sample"])]})
+        return FakeResponse({"meta": {"count": 321}, "results": []})
+
+    monkeypatch.setattr(search.requests, "get", get)
+    works, total, filter_value = search.sample_openalex("(a)", year_from=2013, year_to=2025,
+                                                        document_types=["article"], languages=["en"], n=30, seed=42)
+    assert len(works) == 30 and total == 321
+    assert calls[0]["sample"] == 30 and calls[0]["seed"] == 42
+    assert calls[0]["filter"] == calls[1]["filter"] == filter_value
+    assert "language:en" in filter_value and "type:article" in filter_value
+
+
+def test_rq4_variant_d_has_three_blocks_and_no_labour_block():
+    protocol = load_protocol(ROOT / "config" / "protocol_isabel_chapter_v1.yaml")
+    blocks = protocol.source("openalex_supplementary_rq4_d").model_extra["blocks"]
+    assert list(blocks) == ["education", "skills", "geography"]
+    assert "skills development" not in blocks["education"]
+    assert blocks["skills"] == ["green skills", "digital skills", "green competences", "digital competences",
+                                "green jobs", "skills for the green transition", "twin transition"]
+    assert blocks["geography"] == protocol.source("openalex_supplementary_rq4").model_extra["blocks"]["geography"]

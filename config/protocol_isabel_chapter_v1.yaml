@@ -120,6 +120,17 @@ sources:
                    digitalisation, digitalization, decarbonisation, decarbonization]
       labour: [employment, "labour market", "labor market", workforce, workers, jobs]
       geography: *geography
+  - id: openalex_supplementary_rq4_d       # training (without "skills development") x skills block x geography; no labour block
+    type: openalex
+    field: title_and_abstract
+    applies_to_rqs: [RQ4]
+    status: proposed
+    blocks:
+      education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
+                  reskilling, upskilling, retraining, apprenticeship]
+      skills: ["green skills", "digital skills", "green competences", "digital competences", "green jobs",
+               "skills for the green transition", "twin transition"]
+      geography: *geography
   - id: openalex_supplementary_rq5
     type: openalex
     field: title_and_abstract

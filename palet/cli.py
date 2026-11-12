@@ -23,7 +23,7 @@ from palet.importers import import_scopus_csv
 from palet.models import Record
 from palet.protocol import load_protocol, require_approved
 from palet.runs import ROOT, RUNS_DIR, Run
-from palet.search import build_query, openalex_work_to_record, search_openalex
+from palet.search import build_query, openalex_filter, openalex_work_to_record, sample_openalex, search_openalex
 
 
 def _open_run(value: str) -> Run:
@@ -110,7 +110,34 @@ def cmd_search(args) -> int:
     query = build_query(blocks)
     approved = source.model_extra.get("status") == "approved"
 
+    limits = dict(year_from=protocol.year_from, year_to=protocol.year_to,
+                  document_types=protocol.document_types, languages=protocol.languages)
     print(f"Fuente: {source.id}\nCadena ({len(query)} caracteres):\n  {query}\n")
+    print("Filtros del protocolo aplicados (también con --count-only y --sample): "
+          f"años {protocol.year_from}–{protocol.year_to}, tipos {'|'.join(protocol.document_types)}, "
+          f"idiomas {'|'.join(protocol.languages)}; búsqueda solo en título y resumen.")
+    if args.show_filter:
+        print(f"Filtro enviado a OpenAlex:\n  {openalex_filter(query, **limits)}\n")
+
+    if args.sample:
+        works, total, _ = sample_openalex(query, n=args.sample, seed=args.seed, **limits)
+        print(f"Resultados totales (con filtros): {total}")
+        print(f"Muestra aleatoria de {len(works)} títulos (semilla {args.seed}); no se criba ni se registra nada:\n")
+        rows = []
+        for i, work in enumerate(works, 1):
+            journal = ((work.get("primary_location") or {}).get("source") or {}).get("display_name") or ""
+            title = " ".join(str(work.get("title") or "(sin título)").split())
+            rows.append([i, work.get("publication_year"), work.get("type"), work.get("language"), title, journal,
+                         work.get("doi") or work.get("id")])
+            print(f"{i:>2}. [{work.get('publication_year')}] {title}" + (f" — {journal}" if journal else ""))
+        path = run.file(f"previews/{source.id}_sample_n{args.sample}_seed{args.seed}.csv")
+        with open(path, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            writer.writerow(["n", "year", "type", "language", "title", "source", "link"])
+            writer.writerows(rows)
+        print(f"\nGuardado también en: {path}")
+        return 0
+
     if not args.count_only and not approved:
         raise PaletError(
             f"La cadena de '{source.id}' aún no está aprobada (status: {source.model_extra.get('status')}). "
@@ -118,11 +145,11 @@ def cmd_search(args) -> int:
         )
 
     works, execution = search_openalex(
-        source.id, query, year_from=protocol.year_from, year_to=protocol.year_to,
-        document_types=protocol.document_types, languages=protocol.languages,
+        source.id, query, **limits,
         max_records=args.max_records, count_only=args.count_only, allow_truncation=args.allow_truncation,
     )
-    print(f"Resultados totales en OpenAlex: {execution['total_hits']} (consultado {execution['executed_at']})")
+    print(f"Resultados totales en OpenAlex (con filtros): {execution['total_hits']} "
+          f"(consultado {execution['executed_at']})")
     if args.count_only:
         print("Solo recuento: no se ha descargado ni registrado nada.")
         return 0
@@ -323,6 +350,10 @@ def main(argv=None) -> int:
     p.add_argument("--count-only", action="store_true")
     p.add_argument("--max-records", type=int, default=500)
     p.add_argument("--allow-truncation", action="store_true")
+    p.add_argument("--sample", type=int, default=None, metavar="N",
+                   help="show N random titles (fixed seed) and stop; nothing is screened or recorded")
+    p.add_argument("--seed", type=int, default=20261112)
+    p.add_argument("--show-filter", action="store_true", help="print the exact filter sent to OpenAlex")
     p.set_defaults(func=cmd_search)
 
     p = sub.add_parser("dedup", help="deduplicate all sources of the run")
