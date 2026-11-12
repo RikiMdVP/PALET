@@ -44,11 +44,23 @@ class FakeModel:
 
     def __init__(self):
         self.calls = 0
+        self.assign_calls = 0
         self.messages = SimpleNamespace(create=self._create)
 
     def _create(self, **kwargs):
         self.calls += 1
         user = kwargs["messages"][0]["content"]
+        if "You chart records" in kwargs["system"]:
+            self.assign_calls += 1
+            quote = "coal mine closures in Silesia, Poland" if "10.1/include" in user else "Digital skills matter for growth"
+            core = "RQ1" if "10.1/include" in user else "RQ2"
+            items = [{"rq": f"RQ{i}", "relevance": "core" if f"RQ{i}" == core else ("partial" if i == 6 else "none"),
+                      "evidence_quote": quote if f"RQ{i}" == core else ("an invented passage about welders" if i == 6 else None),
+                      "rationale": "r"} for i in range(1, 8)]
+            text = json.dumps({"assignments": items, "contribution": "It studies jobs.", "contribution_quote": quote,
+                               "evidence_type": "empirical", "geography": ["Poland"]})
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)],
+                                   usage=SimpleNamespace(input_tokens=1500, output_tokens=700), stop_reason="end_turn")
         if "10.1/include" in user:
             text = _reply({}, "coal mine closures in Silesia, Poland")
         elif "10.1/exclude" in user:
@@ -144,6 +156,44 @@ def test_full_workflow(workspace, capsys):
     # Re-screening later keeps the human decisions.
     assert cli.main(["screen", "--run", "t1", "--replay"]) == 0
     assert _finals(w.run_dir)["10.1/disagree"].decided_by == "human:RMVP"
+
+    # Charting of the two included records.
+    assert cli.main(["assign", "--run", "t1", "--estimate"]) == 0
+    assert w.model.assign_calls == 0
+    assert cli.main(["assign", "--run", "t1"]) == 0
+    assert w.model.assign_calls == 2
+    from palet.assign import RecordAssignment
+    assignments = {a.record_id: a for a in run.read_models("assignments.jsonl", RecordAssignment)}
+    assert assignments["10.1/include"].rqs("core") == ["RQ1"]
+    assert assignments["10.1/disagree"].rqs("core") == ["RQ2"]
+    # RQ6 was claimed with an invented quote: not counted, and flagged.
+    assert assignments["10.1/include"].assigned_rqs == ["RQ1"]
+    assert "quote not found for RQ6" in assignments["10.1/include"].needs_review[0]
+
+    # Reporting.
+    capsys.readouterr()
+    assert cli.main(["report", "--run", "t1", "--partial-year", "2021"]) == 0
+    out = capsys.readouterr().out
+    assert "Identificados: 5 | Duplicados: 0 | Cribados: 5 | Excluidos: 3 | Incluidos: 2 | Pendientes: 0" in out
+    report_dir = w.run_dir / "report"
+    for name in ("prisma_flow.pdf", "prisma_flow.png", "prisma_counts.json", "prisma_scr_checklist.md",
+                 "prisma_scr_checklist.csv", "methods_appendix.md", "excluded_records.csv",
+                 "table_included_by_rq.md", "evidence_table.csv", "citations_by_rq.csv",
+                 "fig_included_by_rq.pdf", "fig_included_by_rq.png", "fig_included_by_year.pdf"):
+        assert (report_dir / name).stat().st_size > 0, name
+    counts = json.loads((report_dir / "prisma_counts.json").read_text(encoding="utf-8"))
+    assert counts["identified"] == 5 and counts["screened"] == 5
+    assert counts["included"] + counts["excluded"] + counts["pending"] == counts["screened"]
+    assert counts["exclusion_reasons"] == {"WRONG_LANGUAGE": 1, "WRONG_CONTEXT": 1, "NO_ABSTRACT": 1}
+    assert counts["decided_by_authors"] == 2 and counts["included_by_agreement"] == 1
+    appendix = (report_dir / "methods_appendix.md").read_text(encoding="utf-8")
+    assert "claude-opus-5-5" in appendix and "claude-sonnet-5-5" in appendix
+    assert "was not archived" in appendix and "not validated against independent human screening" in appendix
+    assert "| RQ1 | 1 | 0 |" in appendix
+    checklist = (report_dir / "prisma_scr_checklist.md").read_text(encoding="utf-8")
+    assert checklist.count("\n| ") == 23 and "| 22 | Funding | Funding |" in checklist
+    table = (report_dir / "table_included_by_rq.md").read_text(encoding="utf-8")
+    assert "| RQ1 | 1 | 0 | Kowalski (2021) |" in table and "| RQ2 | 1 | 0 | Smith (2019) |" in table
     assert cli.main(["status", "--run", "t1"]) == 0
 
 
@@ -241,3 +291,34 @@ def test_search_needs_an_approved_string_but_count_only_does_not(workspace, monk
     records = run.read_models("records.jsonl", Record)
     assert len(records) == 6 and any(r.record_id == "10.1/new" for r in records)
     assert [s["query_id"] for s in run.manifest["searches"]] == ["scopus_test", "oa_rq4"]
+
+
+def test_approve_search_edits_only_that_source(tmp_path, capsys):
+    protocol = tmp_path / "protocol.yaml"
+    shutil.copy(CHAPTER_PROTOCOL, protocol)
+    before = protocol.read_text(encoding="utf-8")
+    assert cli.main(["approve-search", "--protocol", str(protocol), "--source", "openalex_supplementary_rq5",
+                     "--by", "RMVP; FRM"]) == 0
+    from palet.protocol import load_protocol
+    loaded = load_protocol(protocol)
+    assert loaded.source("openalex_supplementary_rq5").model_extra["status"] == "approved"
+    assert loaded.source("openalex_supplementary_rq5").model_extra["approved_by"] == "RMVP; FRM"
+    assert loaded.source("openalex_supplementary_rq4_d").model_extra["status"] == "proposed"
+    after = protocol.read_text(encoding="utf-8")
+    assert after.count("status: approved") == before.count("status: approved") + 1
+    assert "# Supplementary searches (decision D1)" in after            # comments are kept
+    assert cli.main(["approve-search", "--protocol", str(protocol), "--source", "openalex_supplementary_rq5",
+                     "--by", "RMVP"]) == 0
+    assert "ya estaba aprobada" in capsys.readouterr().out
+
+
+def test_check_citations_command(tmp_path, capsys):
+    manuscript = tmp_path / "chapter.txt"
+    manuscript.write_text("\n".join([
+        "Abstract", "As Webber (2017) and Green et al. (1997) argue.", "References",
+        "Webber, D. (2017) European disintegration? London: Palgrave.",
+        "McCann, P. (2018) The regional and urban policy of the EU."]), encoding="utf-8")
+    assert cli.main(["check-citations", "--manuscript", str(manuscript), "--out", str(tmp_path / "out")]) == 0
+    assert "Citadas y no listadas: 1 | Listadas y no citadas: 1" in capsys.readouterr().out
+    report_text = (tmp_path / "out" / "citation_check.md").read_text(encoding="utf-8")
+    assert "Green et al. (1997)" in report_text and "McCann, P. (2018)" in report_text

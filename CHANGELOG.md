@@ -3,6 +3,14 @@
 All notable changes to PALET are recorded here, one entry per work package
 of the PALET 2.0 refactor (see `docs/PALET_auditoria_plan_mejora.tex`).
 
+## WP7 (charting), WP9 (reporting) and WP10 (citation check) — 2026-11-12
+
+### Added
+- `python -m palet assign`: charts each included record against the research questions of the protocol (core / partial / none). An assignment only counts when its supporting quote is found verbatim in the record; the rest are flagged for review.
+- `python -m palet report`: PRISMA flow diagram (PDF + PNG, 600 dpi), counts as JSON, PRISMA-ScR checklist (22 items), methods appendix, list of excluded records with reasons, table and figures of included studies by research question and by year, evidence table. Every number is computed from the files of the run. Pending records are shown apart and the diagram is marked as provisional.
+- `python -m palet check-citations`: compares the in-text citations of a manuscript (.docx or text) with its reference list: cited but not listed, listed but not cited, author mismatches, spelling variants, missing a/b suffixes, references abbreviated with "et al.".
+- `python -m palet approve-search`: records the authors' approval of one search string in the protocol file (who and when), leaving the rest of the file untouched.
+
 ## WP0 — Hygiene and safety net (2026-11-11)
 
 Branch `refactor/palet-2`, starting from tag `v1.0-pre-audit`.

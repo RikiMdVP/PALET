@@ -5,6 +5,10 @@
     python -m palet dedup    --run <run>
     python -m palet screen   --run <run> [--limit N] [--estimate] [--replay]
     python -m palet adjudicate --run <run> --file adjudication.xlsx --initials XX
+    python -m palet assign   --run <run> [--estimate] [--replay]
+    python -m palet report   --run <run>
+    python -m palet check-citations --manuscript chapter.docx [--run <run>]
+    python -m palet approve-search --protocol config/protocol.yaml --source <source id> --by XX
     python -m palet status   --run <run>
 
 Messages for the user are in Spanish; code and artefacts are in English.
@@ -13,10 +17,12 @@ Messages for the user are in Spanish; code and artefacts are in English.
 import argparse
 import csv
 import json
+import re
 import sys
+from datetime import date
 from pathlib import Path
 
-from palet import adjudication, config, llm, screening
+from palet import adjudication, assign, citations, config, llm, report, screening
 from palet.dedup import deduplicate
 from palet.errors import PaletError
 from palet.importers import import_scopus_csv
@@ -322,6 +328,122 @@ def cmd_adjudicate(args) -> int:
     return 0
 
 
+# ── assign ──────────────────────────────────────────────────────────────────
+
+def cmd_assign(args) -> int:
+    run = _open_run(args.run)
+    _, protocol = _protocol_of(run)
+    finals = run.read_models("final_decisions.jsonl", screening.FinalDecision)
+    included_ids = [f.record_id for f in finals if f.decision == "include"]
+    pending = sum(f.decision == "pending" for f in finals)
+    by_id = {r.record_id: r for r in run.read_models("records.jsonl", Record)}
+    records = [by_id[i] for i in included_ids]
+    model = config.get_assignment_model()
+
+    system = assign.build_system_prompt(protocol)
+    input_tokens = sum((len(system) + len(screening.build_user_message(r))) / 4 for r in records) * 1.35
+    price_in, price_out = config.get_price(model)
+    estimate = (input_tokens * price_in + 1100 * len(records) * price_out) / 1e6
+    print(f"Registros incluidos a asignar: {len(records)} (modelo {model}); estimación ≈ {estimate:.2f} $")
+    if pending:
+        print(f"AVISO: quedan {pending} registros pendientes de decisión humana; no se asignan hasta que se decidan.")
+    if args.estimate or not records:
+        return 0
+
+    llm.configure(replay=args.replay)
+    llm.reset_usage()
+    workers = args.workers or config.get_screening_settings()["workers"]
+    results, prompt_sha = assign.assign_records(
+        protocol, records, model, workers=workers,
+        progress=lambda done, total: print(f"  {done}/{total} registros", flush=True))
+    run.write_models("assignments.jsonl", results)
+    manifest = run.manifest
+    manifest["prompts"]["assign_system_v1"] = prompt_sha
+    run._save(manifest)
+    summary = assign.summarize(protocol, results)
+    run.log_step("assign", model=model, replay=args.replay, **summary)
+    run.record_llm_usage("assign")
+
+    usage = llm.usage_summary().get("assign", {})
+    print("\nEstudios por pregunta (principal / parcial):")
+    for rq, n in summary["per_rq"].items():
+        print(f"  {rq}: {n['core']} / {n['partial']}")
+    print(f"En varias preguntas: {summary['assigned_to_several_rqs']} | Sin ninguna: "
+          f"{summary['not_assigned_to_any_rq']} | Errores: {summary['errors']} | A revisar: {summary['needs_review']}")
+    print(f"Llamadas: {usage.get('calls', 0)} ({usage.get('cached_calls', 0)} desde la caché). "
+          f"Coste de esta ejecución: {usage.get('cost_usd', 0):.2f} $")
+    return 0
+
+
+# ── report ──────────────────────────────────────────────────────────────────
+
+def cmd_report(args) -> int:
+    run = _open_run(args.run)
+    _, protocol = _protocol_of(run)
+    result = report.build_report(run, protocol, partial_year=args.partial_year)
+    counts = result["counts"]
+    run.log_step("report", included=counts["included"], excluded=counts["excluded"], pending=counts["pending"])
+    print(f"Identificados: {counts['identified']} | Duplicados: {counts['duplicates_removed']} | "
+          f"Cribados: {counts['screened']} | Excluidos: {counts['excluded']} | Incluidos: {counts['included']} | "
+          f"Pendientes: {counts['pending']}")
+    if counts["pending"]:
+        print("AVISO: hay registros pendientes de decisión humana; el diagrama y las tablas son provisionales.")
+    if result["assignments"] is None:
+        print("AVISO: falta la asignación a preguntas (python -m palet assign); sin tablas ni figuras por RQ.")
+    print(f"Ficheros en {result['directory']}:")
+    for name in result["written"]:
+        print(f"  {name}")
+    return 0
+
+
+# ── check-citations ─────────────────────────────────────────────────────────
+
+def cmd_check_citations(args) -> int:
+    paragraphs = citations.read_paragraphs(args.manuscript)
+    body, references = citations.split_manuscript(paragraphs, args.body_start, args.references_heading)
+    result = citations.check_citations(body, references)
+    text = citations.format_report(result)
+    if args.run:
+        run = _open_run(args.run)
+        out_dir = run.path / "report"
+    else:
+        out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "citation_check.md").write_text(text, encoding="utf-8")
+    (out_dir / "citation_check.json").write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"Referencias en la lista: {result['references_in_list']} | Citas en el texto: {result['citations_found']}")
+    print(f"Citadas y no listadas: {len(result['cited_not_listed'])} | Listadas y no citadas: "
+          f"{len(result['listed_not_cited'])} | Autores que no coinciden: {len(result['author_mismatches'])} | "
+          f"Grafías distintas: {len(result['probable_spelling_variants'])} | "
+          f"Necesitan a/b: {len(result['same_authors_and_year'])}")
+    print(f"Informe: {out_dir / 'citation_check.md'}")
+    return 0
+
+
+# ── approve-search ──────────────────────────────────────────────────────────
+
+def cmd_approve_search(args) -> int:
+    """Mark one search of the protocol as approved (a deliberate act of the authors)."""
+    path = Path(args.protocol)
+    protocol = load_protocol(path)
+    source = protocol.source(args.source)
+    if source.model_extra.get("status") == "approved":
+        print(f"La búsqueda '{source.id}' ya estaba aprobada.")
+        return 0
+    text = path.read_text(encoding="utf-8")
+    block = re.search(rf"(^  - id: {re.escape(source.id)}[ \t]*(?:#[^\n]*)?\n)(.*?)(?=^  - id: |^\S|\Z)",
+                      text, flags=re.M | re.S)
+    if not block or "status: proposed" not in block.group(2):
+        raise PaletError(f"No encuentro 'status: proposed' en la fuente '{source.id}' del protocolo")
+    stamp = f"status: approved\n    approved_by: \"{args.by}\"\n    approved_at: {date.today().isoformat()}"
+    new_block = block.group(1) + block.group(2).replace("status: proposed", stamp, 1)
+    path.write_text(text[:block.start()] + new_block + text[block.end():], encoding="utf-8")
+    load_protocol(path)                       # the file must still be a valid protocol
+    print(f"Búsqueda '{source.id}' aprobada por {args.by} el {date.today().isoformat()}.")
+    print(f"Cadena aprobada:\n  {build_query(source.model_extra['blocks'])}")
+    return 0
+
+
 # ── status ──────────────────────────────────────────────────────────────────
 
 def cmd_status(args) -> int:
@@ -378,6 +500,32 @@ def main(argv=None) -> int:
     p.add_argument("--file", required=True)
     p.add_argument("--initials", required=True)
     p.set_defaults(func=cmd_adjudicate)
+
+    p = sub.add_parser("assign", help="chart included records: research questions and contribution")
+    p.add_argument("--run", required=True)
+    p.add_argument("--workers", type=int, default=None)
+    p.add_argument("--estimate", action="store_true")
+    p.add_argument("--replay", action="store_true")
+    p.set_defaults(func=cmd_assign)
+
+    p = sub.add_parser("report", help="PRISMA flow, checklist, methods appendix, tables and figures")
+    p.add_argument("--run", required=True)
+    p.add_argument("--partial-year", type=int, default=None, help="year to mark as incomplete in the figure by year")
+    p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser("check-citations", help="compare the citations of a manuscript with its reference list")
+    p.add_argument("--manuscript", required=True)
+    p.add_argument("--run", default=None, help="write the report into this run (otherwise into --out)")
+    p.add_argument("--out", default=".")
+    p.add_argument("--body-start", default="Abstract")
+    p.add_argument("--references-heading", default="References")
+    p.set_defaults(func=cmd_check_citations)
+
+    p = sub.add_parser("approve-search", help="mark a search string of the protocol as approved")
+    p.add_argument("--protocol", required=True)
+    p.add_argument("--source", required=True)
+    p.add_argument("--by", required=True, help="who approves it (initials or names)")
+    p.set_defaults(func=cmd_approve_search)
 
     p = sub.add_parser("status", help="show what has been done in a run")
     p.add_argument("--run", required=True)
