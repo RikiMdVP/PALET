@@ -187,7 +187,9 @@ sources:
     field: title_and_abstract
     languages: [en]
     applies_to_rqs: [RQ1]
-    status: proposed
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-13
     blocks:
       green: &green ["green transition", "energy transition", "low-carbon transition", decarbonisation,
               decarbonization, "climate policy", "climate policies", "coal phase-out", "green economy",
@@ -224,7 +226,9 @@ sources:
     field: title_and_abstract
     languages: [en]
     applies_to_rqs: [RQ2]
-    status: proposed
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-13
     blocks:
       digital: *digital
       jobs: ["job creation", "job destruction", "job losses", "job loss", "employment effects",
@@ -237,7 +241,9 @@ sources:
     field: title_and_abstract
     languages: [en]
     applies_to_rqs: [RQ3]
-    status: proposed
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-13
     blocks:
       cohesion: ["cohesion policy", "smart specialisation", "smart specialization", "regional policy",
                  "regional development policy", "structural funds", "place-based policy", "place-based policies",
@@ -262,7 +268,9 @@ sources:
     field: title_and_abstract
     languages: [en]
     applies_to_rqs: [RQ7]
-    status: proposed
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-13
     blocks:
       measurement: [forecasting, forecast, projections, "skills forecasting", measurement, indicators,
                     "input-output", "computable general equilibrium", taxonomy, "occupational exposure",
@@ -276,7 +284,9 @@ sources:
     field: title_and_abstract
     languages: [en]
     applies_to_rqs: [RQ6]
-    status: proposed
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-13
     blocks:
       just_transition: ["just transition", "coal region", "coal regions", "coal phase-out", "mining regions",
                         "carbon-intensive regions", "fossil fuel dependent", "geography of discontent",

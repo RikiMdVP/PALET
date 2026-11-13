@@ -3,6 +3,8 @@
 ## Contexto
 PALET (Prompt-based Automated Literature Extraction Tool) es una herramienta de revisión de alcance asistida por IA (proyecto ISABEL, GA 101177687). Se está refactorizando a "PALET 2.0" siguiendo `docs/PALET_auditoria_plan_mejora.tex` (auditoría de 11-nov-2026). **Las erratas de `docs/ERRATA_AUDITORIA.md` prevalecen sobre el informe.** Las decisiones de método vigentes están en `docs/DECISIONES_METODO.md` y el protocolo del capítulo en `config/protocol_isabel_chapter_v1.yaml`. Las notas de sesiones anteriores están en `docs/sesiones/`.
 
+**Estado actual (13-nov-2026): leer primero `docs/HANDOFF_2026-11-13.md`.** El protocolo vigente es `config/protocol_isabel_chapter_v2.yaml`; el capítulo se reescribe sobre el corpus nuevo (entrega a los revisores: 12-dic-2026).
+
 ## Cómo trabajar con Ricardo
 - Habla con Ricardo en **español**. Código, identificadores, docstrings y mensajes de commit en **inglés**.
 - Ritmo **secuencial y quirúrgico**: un paquete de trabajo (WP) cada vez; dentro de él, un cambio coherente cada vez. Tras cada paso: resumen breve (qué cambió, por qué, cómo probarlo, comando exacto) y **espera confirmación** ("continuar") antes de seguir.
