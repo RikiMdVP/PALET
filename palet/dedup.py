@@ -111,6 +111,8 @@ def _merge(keep: Record, drop: Record) -> tuple[Record, Record]:
         "found_by_queries": queries,
         "abstract": keep.abstract or drop.abstract,
         "doi": keep.doi or drop.doi,
+        "issn": keep.issn + [i for i in drop.issn if i not in keep.issn],
+        "source_title": keep.source_title or drop.source_title,
     })
     return merged, drop.model_copy(update={"status": "duplicate"})
 

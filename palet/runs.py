@@ -115,8 +115,11 @@ class Run:
         self._save(manifest)
 
     def record_protocol(self, protocol_path, protocol) -> None:
+        # Inside the repository the path is stored relative to it, so a run can be opened from any checkout.
+        protocol_path = Path(protocol_path).resolve()
+        stored = protocol_path.relative_to(ROOT) if protocol_path.is_relative_to(ROOT) else protocol_path
         self.update(protocol={
-            "path": str(protocol_path),
+            "path": str(stored),
             "sha256": sha256_file(protocol_path),
             "version": protocol.version,
             "status": protocol.status,

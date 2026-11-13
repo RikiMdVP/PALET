@@ -14,7 +14,13 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from palet.errors import PaletConfigError
 
-Dimension = Literal["population", "concept", "context", "study_type", "language", "period"]
+Dimension = Literal["population", "concept", "context", "study_type", "language", "period", "journal"]
+
+# How the decisions of two screeners become a final decision.
+#   adjudicate_all        only agreement is final; every doubt or disagreement goes to a person
+#   agreement_or_exclude  include if both include; a person decides only "one includes, the other is unsure";
+#                         every other doubt or disagreement, and records without abstract, are excluded
+DecisionRule = Literal["adjudicate_all", "agreement_or_exclude"]
 
 
 class Criterion(BaseModel):
@@ -39,6 +45,16 @@ class Source(BaseModel):
     applies_to_rqs: list[str] = Field(default_factory=list)
 
 
+class JournalList(BaseModel):
+    """A spreadsheet of eligible journals (columns: Journal title, ISSN, eISSN)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    file: str
+    description: str = ""
+
+
 class Protocol(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -57,6 +73,8 @@ class Protocol(BaseModel):
     document_types: list[str] = Field(default_factory=lambda: ["article", "review"])
     sources: list[Source] = Field(default_factory=list)
     known_items: list[str] = Field(default_factory=list)
+    journal_lists: list[JournalList] = Field(default_factory=list)   # empty: no journal filter
+    decision_rule: DecisionRule = "adjudicate_all"
 
     @field_validator("research_questions")
     @classmethod

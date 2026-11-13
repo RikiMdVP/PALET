@@ -94,6 +94,7 @@ class Record(BaseModel):
     authors: list[str] = Field(default_factory=list)
     year: Optional[int] = None
     source_title: Optional[str] = None
+    issn: list[str] = Field(default_factory=list)   # every ISSN of the journal that the source gives
     language: Optional[str] = None
     doc_type: Optional[str] = None
     keywords: list[str] = Field(default_factory=list)

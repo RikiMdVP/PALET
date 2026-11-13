@@ -3,6 +3,17 @@
 All notable changes to PALET are recorded here, one entry per work package
 of the PALET 2.0 refactor (see `docs/PALET_auditoria_plan_mejora.tex`).
 
+## Protocol v2: journal filter and decision rule — 2026-11-13
+
+### Added
+- Journal lists as an eligibility criterion (`journal_lists` in the protocol, dimension `journal`): records are checked by ISSN (journal title when there is no ISSN) before any model call; reason `NOT_IN_JOURNAL_LIST`. Records now carry `issn`.
+- Decision rule `agreement_or_exclude` (`decision_rule` in the protocol): include on agreement; the authors decide "one includes, the other is unsure"; other doubts and disagreements are excluded (`NO_AGREEMENT`), as are records without abstract.
+- Commands `set-protocol` (move a run to a new protocol version), `reparse` (rebuild records from the raw data of the run) and `journals` (which records are in the lists; writes `journal_check.csv`).
+- `config/protocol_isabel_chapter_v2.yaml` with proposed searches for RQ1, RQ2, RQ3, RQ6 and RQ7.
+
+### Changed
+- The protocol path of a run is stored relative to the repository.
+
 ## Dashboard for the 2.0 workflow and one-or-two screeners — 2026-11-12
 
 ### Added

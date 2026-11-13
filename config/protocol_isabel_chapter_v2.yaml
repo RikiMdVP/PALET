@@ -1,0 +1,272 @@
+# Protocol of the ISABEL chapter review, version 2 (2026-11-13).
+# Source of truth for decisions: docs/DECISIONES_METODO.md
+# Changes from version 1 (config/protocol_isabel_chapter_v1.yaml, kept as approved on 2026-11-11):
+#   - IC5 and journal_lists: only journals indexed in SCIE or SSCI
+#   - decision_rule: agreement_or_exclude
+#   - supplementary searches for RQ1, RQ2, RQ3, RQ6 and RQ7 (each with its own status)
+# Research questions and criteria IC1-IC4 / EC1-EC3 are unchanged.
+version: 2
+status: approved         # see docs/DECISIONES_METODO.md, entry of 2026-11-13
+title: "Policies for job creation and destruction (JCD) linked to the EU twin transition"
+approved_by: "Ricardo Martínez de Vega"      # add Fernando Rubiera-Morollón once he has confirmed version 2
+approved_at: 2026-11-13
+
+# Journals eligible under IC5. Checked in code by ISSN (journal title when a record has no ISSN).
+journal_lists:
+  - id: wos_scie_2026
+    file: data/raw/journal_lists/wos_scie_2026.xlsx
+    description: "the Science Citation Index Expanded (Web of Science master journal list, June 2026)"
+  - id: wos_ssci_2026
+    file: data/raw/journal_lists/wos_ssci_2026.xlsx
+    description: "the Social Sciences Citation Index (Web of Science master journal list, June 2026)"
+
+# include only if both screeners include; the authors decide "one includes, the other is unsure";
+# every other doubt or disagreement, and records without abstract, are excluded.
+decision_rule: agreement_or_exclude
+
+research_questions:      # FROZEN. Only humans may edit.
+  RQ1: "What economic-policy recommendations does the literature formulate to mitigate job destruction and boost job creation associated with the green transition in the EU?"
+  RQ2: "What recommendations does the literature provide regarding the impact of digitalisation and artificial intelligence on JCD in the EU?"
+  RQ3: "What cohesion or smart-specialisation policies does the evidence suggest to address job creation and destruction linked to the green and digital transition in EU regions?"
+  RQ4: "Which initial-education and lifelong-learning models are most effective for adapting green and digital skills?"
+  RQ5: "What role do immigration and labour mobility play in filling skill gaps during the transition?"
+  RQ6: "How should just-transition policies be designed to prevent green and digital discontent in territories that depend on fossil fuels or have low levels of digitalisation?"
+  RQ7: "What knowledge gaps persist regarding the measurement and forecasting of JCD and the effectiveness of the cited policies?"
+
+research_questions_original:
+  RQ3: "What cohesion or smart-specialisation policies does the evidence suggest?"
+
+assignment_mode: multi
+
+criteria:
+  - id: IC1
+    reason_code: WRONG_CONTEXT
+    kind: include
+    dimension: context
+    rule: "Empirical or policy focus on EU-27 member states or their regions, the United Kingdom, or EFTA countries (Iceland, Liechtenstein, Norway, Switzerland). Multi-country or global studies qualify only if they report results specific to these countries or to the EU."
+  - id: IC2
+    reason_code: WRONG_CONCEPT
+    kind: include
+    dimension: concept
+    rule: "Addresses employment, jobs, job creation or destruction, skills, labour markets, or labour mobility/migration of workers."
+  - id: IC3
+    reason_code: WRONG_PHENOMENON
+    kind: include
+    dimension: concept
+    rule: "Linked to the green transition (decarbonisation, energy transition, climate policy, just transition) and/or the digital transition (digitalisation, automation, artificial intelligence, ICT, Industry 4.0)."
+  - id: IC4
+    reason_code: WRONG_DOC_TYPE
+    kind: include
+    dimension: study_type
+    rule: "Peer-reviewed journal article or review."
+  - id: IC5
+    reason_code: NOT_IN_JOURNAL_LIST
+    kind: include
+    dimension: journal
+    rule: "Published in a journal indexed in the Science Citation Index Expanded or the Social Sciences Citation Index (Web of Science master journal lists of June 2026)."
+  - id: EC1
+    reason_code: WRONG_CONTEXT
+    kind: exclude
+    dimension: context
+    rule: "Exclusively non-European setting (e.g., China, India, Peru, Russia, USA, Western Balkans without explicit EU framing) without EU- or Europe-specific results."
+  - id: EC2
+    reason_code: WRONG_CONCEPT
+    kind: exclude
+    dimension: concept
+    rule: "No labour-market dimension (e.g., purely environmental, technical, fiscal or financial analysis)."
+  - id: EC3
+    reason_code: WRONG_PHENOMENON
+    kind: exclude
+    dimension: concept
+    rule: "No link to the green or digital transition (e.g., general regional convergence or cohesion analysis without a transition component)."
+  # NOTE: policy recommendations are NOT required at title/abstract stage; checked at extraction.
+
+year_from: 2013
+year_to: 2025
+languages: [en, es]
+document_types: [article, review]
+
+sources:
+  - id: scopus_2025_export
+    type: manual_import
+    file: data/raw/isabel_chapter_2025/Final_Fernando_3.1.csv
+    platform: "Scopus web export"
+    exported_at: "2025-05 (exact date unknown)"
+    query_string: null      # original string not archived; try to recover from Scopus search history
+  # Supplementary searches (decision D1). Terms inside a block are joined with OR,
+  # blocks with AND. Searched in OpenAlex on title and abstract only, with the
+  # year, language and document-type limits of this protocol.
+  # status: proposed -> approved (the search only downloads records once approved;
+  # `python -m palet search --count-only` shows the number of hits before that).
+  - id: openalex_supplementary_rq4
+    type: openalex
+    field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
+    applies_to_rqs: [RQ4]
+    status: proposed
+    blocks:
+      education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
+                  reskilling, upskilling, retraining, apprenticeship, "skills development", "higher education"]
+      transition: &transition ["green skills", "digital skills", "green jobs", "green transition",
+                  "digital transition", "twin transition", "energy transition", "just transition",
+                  digitalisation, digitalization, automation, "artificial intelligence",
+                  decarbonisation, decarbonization]
+      labour: [employment, "labour market", "labor market", workforce, workers, jobs]
+      geography: &geography ["European Union", Europe, European, EU,
+                  Austria, Belgium, Bulgaria, Croatia, Cyprus, Czechia, "Czech Republic", Denmark, Estonia,
+                  Finland, France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg,
+                  Malta, Netherlands, Poland, Portugal, Romania, Slovakia, Slovenia, Spain, Sweden,
+                  "United Kingdom", UK, Britain, Iceland, Liechtenstein, Norway, Switzerland]
+  # Narrower alternatives for RQ4 (the first string returned 1,287 hits on 2026-11-12).
+  # Only ONE of the three RQ4 strings should end up approved.
+  - id: openalex_supplementary_rq4_b       # without "higher education"
+    type: openalex
+    field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
+    applies_to_rqs: [RQ4]
+    status: proposed
+    blocks:
+      education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
+                  reskilling, upskilling, retraining, apprenticeship, "skills development"]
+      transition: *transition
+      labour: [employment, "labour market", "labor market", workforce, workers, jobs]
+      geography: *geography
+  - id: openalex_supplementary_rq4_c       # without "higher education"; transition terms only (no automation / AI)
+    type: openalex
+    field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
+    applies_to_rqs: [RQ4]
+    status: proposed
+    blocks:
+      education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
+                  reskilling, upskilling, retraining, apprenticeship, "skills development"]
+      transition: ["green skills", "digital skills", "green jobs", "green transition", "digital transition",
+                   "twin transition", "energy transition", "just transition",
+                   digitalisation, digitalization, decarbonisation, decarbonization]
+      labour: [employment, "labour market", "labor market", workforce, workers, jobs]
+      geography: *geography
+  - id: openalex_supplementary_rq4_d       # training (without "skills development") x skills block x geography; no labour block
+    type: openalex
+    field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
+    applies_to_rqs: [RQ4]
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-12
+    blocks:
+      education: ["vocational education", "vocational training", "lifelong learning", "adult learning",
+                  reskilling, upskilling, retraining, apprenticeship]
+      skills: ["green skills", "digital skills", "green competences", "digital competences", "green jobs",
+               "skills for the green transition", "twin transition"]
+      geography: *geography
+  - id: openalex_supplementary_rq5
+    type: openalex
+    field: title_and_abstract
+    languages: [en]            # supplementary searches are limited to English (decision of 2026-11-12)
+    applies_to_rqs: [RQ5]
+    status: approved
+    approved_by: "RMV; FRM"
+    approved_at: 2026-11-12
+    blocks:
+      migration: [immigration, immigrants, migrants, "migrant workers", "labour migration", "labor migration",
+                  "labour mobility", "labor mobility", "skilled migration", "third country nationals",
+                  "free movement of workers"]
+      skills: ["skill shortage", "skills shortage", "skills gap", "skill gap", "labour shortage",
+               "labor shortage", "green skills", "digital skills", "green jobs"]
+      transition: *transition
+      geography: *geography
+
+  # ── Supplementary searches for the remaining questions (decision of 2026-11-13) ──
+  # Same rules as RQ4/RQ5: OpenAlex, title and abstract, English, 2013-2025, article|review.
+  # Terms inside a block are joined with OR; blocks are joined with AND.
+  - id: openalex_supplementary_rq1          # green transition x jobs x geography
+    type: openalex
+    field: title_and_abstract
+    languages: [en]
+    applies_to_rqs: [RQ1]
+    status: proposed
+    blocks:
+      green: &green ["green transition", "energy transition", "low-carbon transition", decarbonisation,
+              decarbonization, "climate policy", "climate policies", "coal phase-out", "green economy",
+              "green jobs", "European Green Deal", "net zero"]
+      jobs: &jobs ["job creation", "job destruction", "job losses", "job loss", "employment effects",
+             "employment impact", "employment impacts", "labour market", "labor market", "green jobs"]
+      geography: *geography
+  - id: openalex_supplementary_rq1_b        # narrower: adds a policy block
+    type: openalex
+    field: title_and_abstract
+    languages: [en]
+    applies_to_rqs: [RQ1]
+    status: proposed
+    blocks:
+      green: *green
+      jobs: *jobs
+      policy: &policy [policy, policies, "policy implications", "policy recommendations", regulation]
+      geography: *geography
+  - id: openalex_supplementary_rq2          # digitalisation and AI x jobs x geography
+    type: openalex
+    field: title_and_abstract
+    languages: [en]
+    applies_to_rqs: [RQ2]
+    status: proposed
+    blocks:
+      digital: &digital [digitalisation, digitalization, "digital transformation", "digital transition",
+                automation, "artificial intelligence", robots, robotisation, robotization, "Industry 4.0"]
+      jobs: ["job creation", "job destruction", "job losses", "job loss", "employment effects",
+             "employment impact", "employment impacts", "labour market", "labor market",
+             "technological unemployment", "job polarisation", "job polarization", "labour demand", "labor demand"]
+      geography: *geography
+  - id: openalex_supplementary_rq2_b        # narrower: adds a policy block
+    type: openalex
+    field: title_and_abstract
+    languages: [en]
+    applies_to_rqs: [RQ2]
+    status: proposed
+    blocks:
+      digital: *digital
+      jobs: ["job creation", "job destruction", "job losses", "job loss", "employment effects",
+             "employment impact", "employment impacts", "labour market", "labor market",
+             "technological unemployment", "job polarisation", "job polarization", "labour demand", "labor demand"]
+      policy: *policy
+      geography: *geography
+  - id: openalex_supplementary_rq3          # cohesion / smart specialisation x transition x labour x geography
+    type: openalex
+    field: title_and_abstract
+    languages: [en]
+    applies_to_rqs: [RQ3]
+    status: proposed
+    blocks:
+      cohesion: ["cohesion policy", "smart specialisation", "smart specialization", "regional policy",
+                 "regional development policy", "structural funds", "place-based policy", "place-based policies",
+                 "Just Transition Fund", "regional innovation policy"]
+      transition: *transition
+      labour: [employment, jobs, "job creation", "labour market", "labor market", workforce]
+      geography: *geography
+  - id: openalex_supplementary_rq6          # just transition and territorial discontent x labour x geography
+    type: openalex
+    field: title_and_abstract
+    languages: [en]
+    applies_to_rqs: [RQ6]
+    status: proposed
+    blocks:
+      just_transition: ["just transition", "coal region", "coal regions", "coal phase-out", "mining regions",
+                        "carbon-intensive regions", "fossil fuel dependent", "left behind", "left-behind",
+                        "geography of discontent", "green discontent", "digital divide"]
+      labour: [employment, unemployment, jobs, workers, workforce, "labour market", "labor market"]
+      geography: *geography
+  - id: openalex_supplementary_rq7          # measurement and forecasting x jobs x transition x geography
+    type: openalex
+    field: title_and_abstract
+    languages: [en]
+    applies_to_rqs: [RQ7]
+    status: proposed
+    blocks:
+      measurement: [forecasting, forecast, projections, "skills forecasting", measurement, indicators,
+                    "input-output", "computable general equilibrium", taxonomy, "occupational exposure",
+                    "automation risk", "jobs at risk"]
+      jobs: ["job creation", "job destruction", "job losses", "employment effects", "employment impact",
+             "employment impacts", "green jobs", "labour demand", "labor demand", occupations]
+      transition: *transition
+      geography: *geography
+
+known_items: []            # D7 pending: 20-40 DOIs considered essential by the authors

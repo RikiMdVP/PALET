@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from palet.errors import PaletError
+from palet.journals import split_issns
 from palet.models import Record, _is_missing
 
 SCOPUS_REQUIRED_COLUMNS = ("Title", "Authors", "Year", "DOI", "Abstract")
@@ -64,6 +65,7 @@ def import_scopus_csv(path, query_id: str) -> list[Record]:
             year=row.get("Year"),
             abstract=abstract,
             source_title=_text(row.get("Source title")),
+            issn=split_issns(row.get("ISSN")),
             language=_LANGUAGE_CODES.get(language.lower(), language.lower()) if language else None,
             doc_type=doc_type.lower() if doc_type else None,
             keywords=_split(row.get("Author Keywords")),

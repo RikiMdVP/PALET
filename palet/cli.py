@@ -9,6 +9,9 @@
     python -m palet report   --run <run>
     python -m palet check-citations --manuscript chapter.docx [--run <run>]
     python -m palet approve-search --protocol config/protocol.yaml --source <source id> --by XX
+    python -m palet set-protocol --run <run> --protocol config/protocol_v2.yaml
+    python -m palet reparse  --run <run>
+    python -m palet journals --run <run>
     python -m palet status   --run <run>
 
 Messages for the user are in Spanish; code and artefacts are in English.
@@ -22,7 +25,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from palet import adjudication, assign, citations, config, llm, report, screening
+from palet import adjudication, assign, citations, config, journals, llm, report, screening
 from palet.dedup import deduplicate
 from palet.errors import PaletError
 from palet.importers import import_scopus_csv
@@ -44,6 +47,10 @@ def _protocol_of(run: Run):
     if not info:
         raise PaletError("This run has no protocol recorded")
     path = Path(info["path"])
+    if not path.is_absolute():
+        path = ROOT / path
+    elif not path.is_file() and (ROOT / "config" / path.name).is_file():
+        path = ROOT / "config" / path.name          # run created in another checkout of the repository
     return path, load_protocol(path)
 
 
@@ -452,6 +459,86 @@ def cmd_approve_search(args) -> int:
     return 0
 
 
+# ── set-protocol / reparse / journals ───────────────────────────────────────
+
+def cmd_set_protocol(args) -> int:
+    """Point a run at a new version of its protocol (criteria changed; decisions must be redone)."""
+    run = _open_run(args.run)
+    path = Path(args.protocol).resolve()
+    protocol = load_protocol(path)
+    previous = run.manifest.get("protocol") or {}
+    run.record_protocol(path, protocol)
+    run.log_step("set_protocol", previous_version=previous.get("version"), previous_sha256=previous.get("sha256"),
+                 version=protocol.version, sha256=run.manifest["protocol"]["sha256"])
+    print(f"Protocolo de la ejecución: v{previous.get('version')} → v{protocol.version} ({protocol.status}).")
+    print("Vuelve a lanzar el cribado para aplicar los criterios nuevos (con --replay no se gasta nada "
+          "si las respuestas ya están en la caché).")
+    return 0
+
+
+def cmd_reparse(args) -> int:
+    """Rebuild the records of every source from the raw data kept in the run, then deduplicate.
+
+    Needed when the parser learns to read a new field (e.g. the ISSN). Nothing is downloaded.
+    """
+    run = _open_run(args.run)
+    _, protocol = _protocol_of(run)
+    for search in run.manifest["searches"]:
+        source_id = search["query_id"]
+        raw = run.path / "sources" / f"{source_id}_raw.json"
+        if raw.is_file():
+            works = json.loads(raw.read_text(encoding="utf-8"))
+            records = [openalex_work_to_record(work, source_id) for work in works]
+        elif search.get("source") == "manual_import":
+            file_path = Path(protocol.source(source_id).model_extra.get("file", ""))
+            records = import_scopus_csv(file_path if file_path.is_absolute() else ROOT / file_path,
+                                        query_id=source_id)
+        else:
+            raise PaletError(f"No hay datos en bruto para la fuente '{source_id}'")
+        before = len(run.read_models(f"sources/{source_id}.jsonl", Record))
+        if len(records) != before:
+            raise PaletError(f"'{source_id}': al releer salen {len(records)} registros y había {before}; no se cambia nada")
+        run.write_models(f"sources/{source_id}.jsonl", records)
+        print(f"  {source_id}: {len(records)} registros releídos, {sum(bool(r.issn) for r in records)} con ISSN")
+    stats = _do_dedup(run)
+    print(f"Deduplicación: {stats['input']} → {stats['unique']} únicos")
+    return 0
+
+
+def cmd_journals(args) -> int:
+    """Show which records are in the journal lists of the protocol. Changes no decision."""
+    run = _open_run(args.run)
+    _, protocol = _protocol_of(run)
+    index = journals.index_for(protocol, ROOT)
+    if index is None:
+        raise PaletError("El protocolo de esta ejecución no tiene listas de revistas (journal_lists)")
+    for item in index.files:
+        print(f"Lista {item['id']}: {item['journals']} revistas ({item['file']})")
+    records = run.read_models("records.jsonl", Record)
+    per_source: dict = {}
+    how_counts: dict = {}
+    with open(run.file("journal_check.csv"), "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        writer.writerow(["record_id", "in_list", "how", "journal", "issn", "year", "title", "found_by"])
+        for record in records:
+            listed, how = index.check(record)
+            how_counts[how] = how_counts.get(how, 0) + 1
+            for source_id in record.found_by_queries:
+                row = per_source.setdefault(source_id, [0, 0])
+                row[0 if listed else 1] += 1
+            writer.writerow([record.record_id, listed, how, record.source_title, "; ".join(record.issn),
+                             record.year, record.title, "; ".join(record.found_by_queries)])
+    listed_total = sum(n for how, n in how_counts.items() if how in ("issn", "title"))
+    print(f"\nRegistros únicos: {len(records)} | en las listas: {listed_total} | fuera: {len(records) - listed_total}")
+    for how, n in sorted(how_counts.items(), key=lambda kv: -kv[1]):
+        print(f"  {n:>5}  {how}")
+    print("\nPor fuente (en lista / fuera):")
+    for source_id, (inside, outside) in sorted(per_source.items()):
+        print(f"  {source_id}: {inside} / {outside}")
+    print(f"Detalle: {run.path / 'journal_check.csv'}")
+    return 0
+
+
 # ── status ──────────────────────────────────────────────────────────────────
 
 def cmd_status(args) -> int:
@@ -536,6 +623,19 @@ def main(argv=None) -> int:
     p.add_argument("--source", required=True)
     p.add_argument("--by", required=True, help="who approves it (initials or names)")
     p.set_defaults(func=cmd_approve_search)
+
+    p = sub.add_parser("set-protocol", help="point a run at a new version of its protocol")
+    p.add_argument("--run", required=True)
+    p.add_argument("--protocol", required=True)
+    p.set_defaults(func=cmd_set_protocol)
+
+    p = sub.add_parser("reparse", help="rebuild records from the raw data of the run (no download)")
+    p.add_argument("--run", required=True)
+    p.set_defaults(func=cmd_reparse)
+
+    p = sub.add_parser("journals", help="which records are in the journal lists of the protocol")
+    p.add_argument("--run", required=True)
+    p.set_defaults(func=cmd_journals)
 
     p = sub.add_parser("status", help="show what has been done in a run")
     p.add_argument("--run", required=True)

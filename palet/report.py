@@ -22,6 +22,8 @@ REASON_LABELS = {
     "WRONG_DOC_TYPE": "Document type not eligible",
     "WRONG_LANGUAGE": "Language not eligible",
     "OUT_OF_PERIOD": "Published outside the review period",
+    "NOT_IN_JOURNAL_LIST": "Journal not in SCIE or SSCI",
+    "NO_AGREEMENT": "No agreement between the AI screeners",
     "WRONG_CONTEXT": "Outside the geographical scope",
     "WRONG_CONCEPT": "No labour-market dimension",
     "WRONG_PHENOMENON": "No link to the twin transition",
@@ -97,6 +99,7 @@ def prisma_counts(run: Run, protocol: Protocol) -> dict:
         "excluded_by_agreement": decided_by[("exclude", "agreement")],
         "excluded_by_authors": decided_by[("exclude", "authors")],
         "excluded_by_metadata": decided_by[("exclude", "metadata")],
+        "excluded_no_agreement": decided_by[("exclude", "no_agreement")],
         "decided_by_authors": decided_by[("include", "authors")] + decided_by[("exclude", "authors")],
         "author_initials": human_initials,
         "agreement": agreement(decisions),
@@ -427,15 +430,29 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
             "quoted passage occurs in the record and (ii) applied a fixed rule: exclude if an inclusion "
             "criterion is not met or an exclusion criterion applies; include if every inclusion criterion "
             "is met with a verified quote and no exclusion criterion applies; otherwise unclear. "
-            "Document type, language and period were checked against the bibliographic metadata.", "",
+            "Document type, language and period were checked against the bibliographic metadata."
+            + (" Indexing of the journal was checked by ISSN (journal title when the record had no ISSN) against "
+               + " and ".join(j.description or j.id for j in protocol.journal_lists)
+               + f"; {counts['exclusion_reasons'].get('NOT_IN_JOURNAL_LIST', 0)} record(s) were excluded on this "
+               "ground before any model was called. The lists reflect indexing at the date of the list, not "
+               "at the date of publication." if protocol.journal_lists else ""), "",
             ("The outcome of that rule was final: there was no second screener and no cross-check. Only "
              "records the model found unclear and records without an abstract were decided by the authors."
              if single else
+             "A record was included only when both models included it. Records that one model included and "
+             "the other found unclear were decided by the authors. Records excluded by both models were "
+             "excluded for the reason they shared. All other records (both models unsure, one excluding and "
+             "the other unsure, or one including and the other excluding) and records without an abstract "
+             "were excluded without human review; this rule is conservative and may have excluded "
+             "relevant studies."
+             if protocol.decision_rule == "agreement_or_exclude" else
              "A decision was final only when both models reached it. Records on which the models disagreed, "
              "records either model found unclear, and records without an abstract were decided by the authors."), "",
             "| | Records |", "|---|---|",
             f"| Screened | {counts['screened']} |",
-            f"| Excluded from metadata | {counts['excluded_by_metadata']} |",
+            f"| Excluded from metadata (document type, language, period, journal list, no abstract) | "
+            f"{counts['excluded_by_metadata']} |",
+            f"| Excluded for lack of agreement between the models | {counts['excluded_no_agreement']} |",
             f"| Included by {by_ai} | {counts['included_by_agreement']} |",
             f"| Excluded by {by_ai} | {counts['excluded_by_agreement']} |",
             f"| Decided by the authors | {counts['decided_by_authors']} "

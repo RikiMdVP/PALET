@@ -19,19 +19,22 @@ from rapidfuzz import fuzz
 from palet import llm
 from palet.errors import PaletConfigError
 from palet.models import Record, normalize_title
+from palet import journals
+from palet.runs import ROOT
 from palet.protocol import Criterion, Protocol
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "screen_system_v1.txt"
 
 # Criteria on these dimensions are checked against metadata, not by the model.
-METADATA_DIMENSIONS = {"study_type", "language", "period"}
+METADATA_DIMENSIONS = {"study_type", "language", "period", "journal"}
 
 # Order in which the reason for an exclusion is chosen when several apply.
 REASON_PRECEDENCE = [
-    "WRONG_DOC_TYPE", "WRONG_LANGUAGE", "OUT_OF_PERIOD",
+    "WRONG_DOC_TYPE", "WRONG_LANGUAGE", "OUT_OF_PERIOD", "NOT_IN_JOURNAL_LIST",
     "WRONG_CONTEXT", "WRONG_CONCEPT", "WRONG_PHENOMENON", "NO_POLICY_CONTENT",
 ]
 NO_ABSTRACT = "NO_ABSTRACT"
+NO_AGREEMENT = "NO_AGREEMENT"          # decision rule agreement_or_exclude: the screeners did not agree
 
 QUOTE_THRESHOLD = 0.90
 MAX_ATTEMPTS = 3
@@ -194,11 +197,22 @@ def metadata_decision(protocol: Protocol, record: Record) -> Optional[ScreeningD
             or (protocol.year_to and record.year > protocol.year_to)):
         reason = "OUT_OF_PERIOD"
 
+    notes = f"type={record.doc_type}, language={record.language}, year={record.year}"
+    if not reason:
+        index = journals.index_for(protocol, ROOT)
+        if index is not None:
+            listed, how = index.check(record)
+            if not listed:
+                reason = "NOT_IN_JOURNAL_LIST"
+                notes = f"journal={record.source_title!r}, issn={record.issn}: {how}"
+
     if reason:
         return ScreeningDecision(record_id=record.record_id, screener="metadata", decision="exclude",
-                                 reason_code=reason,
-                                 notes=f"type={record.doc_type}, language={record.language}, year={record.year}")
+                                 reason_code=reason, notes=notes)
     if not record.abstract or not record.abstract.strip():
+        if protocol.decision_rule == "agreement_or_exclude":
+            return ScreeningDecision(record_id=record.record_id, screener="metadata", decision="exclude",
+                                     reason_code=NO_ABSTRACT, notes="no abstract available")
         # Not an exclusion: a person decides from the title (or retrieves the abstract).
         return ScreeningDecision(record_id=record.record_id, screener="metadata", decision="unclear",
                                  reason_code=NO_ABSTRACT, notes="no abstract available")
@@ -272,8 +286,11 @@ def screen_record(protocol: Protocol, record: Record, screener_name: str, model:
 
 # ── Combining screeners ─────────────────────────────────────────────────────
 
-def combine(record_id: str, decisions: list[ScreeningDecision]) -> FinalDecision:
-    """Final outcome from the screeners' decisions for one record."""
+def combine(record_id: str, decisions: list[ScreeningDecision], rule: str = "adjudicate_all") -> FinalDecision:
+    """Final outcome from the screeners' decisions for one record.
+
+    ``rule`` is the decision rule of the protocol (see palet.protocol.DecisionRule).
+    """
     summary = {d.screener: d.decision + (f" ({d.reason_code})" if d.reason_code else "") for d in decisions}
 
     metadata = next((d for d in decisions if d.screener == "metadata"), None)
@@ -300,8 +317,16 @@ def combine(record_id: str, decisions: list[ScreeningDecision]) -> FinalDecision
                              reasons_shared=bool(shared) if len(decisions) > 1 else None,
                              decided_by=how, screener_decisions=summary)
 
+    if rule == "agreement_or_exclude" and len(decisions) > 1 and "error" not in outcomes \
+            and outcomes != {"include", "unclear"}:
+        # Both unsure, one excludes and the other is unsure, or include against exclude.
+        return FinalDecision(record_id=record_id, decision="exclude", reason_code=NO_AGREEMENT,
+                             reasons_shared=False, decided_by="no_agreement", screener_decisions=summary)
+
     if "error" in outcomes:
         why = "a screener failed"
+    elif outcomes == {"include", "unclear"}:
+        why = "one screener includes, the other is unsure"
     elif "unclear" in outcomes:
         why = "at least one screener was unsure" if len(decisions) > 1 else "the screener was unsure"
     else:
@@ -357,7 +382,8 @@ def screen_records(protocol: Protocol, records: list[Record], screeners: list[di
                 progress(done, len(jobs))
 
     flat = [d for record in records for d in all_decisions[record.record_id]]
-    finals = [combine(record.record_id, all_decisions[record.record_id]) for record in records]
+    finals = [combine(record.record_id, all_decisions[record.record_id], protocol.decision_rule)
+              for record in records]
     return flat, finals, prompt_sha
 
 

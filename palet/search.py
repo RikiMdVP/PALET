@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 from palet import config
 from palet.errors import PaletConfigError, SearchError
+from palet.journals import normalize_issn
 from palet.models import Record
 
 OPENALEX_WORKS_URL = "https://api.openalex.org/works"
@@ -188,7 +189,13 @@ def openalex_work_to_record(work: dict, query_id: str) -> Record:
         for code in authorship.get("countries") or []:
             if code and code not in countries:
                 countries.append(code)
-    source = ((work.get("primary_location") or {}).get("source") or {}).get("display_name")
+    journal = (work.get("primary_location") or {}).get("source") or {}
+    source = journal.get("display_name")
+    issns = []
+    for value in [journal.get("issn_l"), *(journal.get("issn") or [])]:
+        issn = normalize_issn(value)
+        if issn and issn not in issns:
+            issns.append(issn)
     keywords = [k.get("display_name") for k in (work.get("keywords") or []) if k.get("display_name")]
 
     return Record.build(
@@ -198,6 +205,7 @@ def openalex_work_to_record(work: dict, query_id: str) -> Record:
         year=work.get("publication_year"),
         abstract=_abstract_from_inverted_index(work.get("abstract_inverted_index")),
         source_title=source,
+        issn=issns,
         language=work.get("language"),
         doc_type=work.get("type"),
         keywords=keywords,
