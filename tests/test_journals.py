@@ -122,11 +122,11 @@ def test_default_rule_still_sends_every_doubt_to_a_person():
 def test_version_2_of_the_chapter_protocol():
     v2 = load_protocol(ROOT / "config" / "protocol_isabel_chapter_v2.yaml")
     assert v2.version == 2 and v2.decision_rule == "agreement_or_exclude"
-    assert [j.id for j in v2.journal_lists] == ["wos_scie_2026", "wos_ssci_2026"]
+    assert [j.id for j in v2.journal_lists] == ["wos_scie_2026", "wos_ssci_2026", "wos_esci_2025"]
     # Questions and the criteria judged by the model are those of version 1: cached replies stay valid.
     from palet.screening import build_system_prompt
     assert build_system_prompt(v2) == build_system_prompt(V1)
     assert v2.research_questions == V1.research_questions
     new = [s for s in v2.sources if s.id not in {x.id for x in V1.sources}]
-    assert {s.id for s in new} == {f"openalex_supplementary_{x}" for x in ("rq1", "rq1_b", "rq2", "rq2_b", "rq3", "rq6", "rq7")}
+    assert {s.id for s in new} == {f"openalex_supplementary_{x}" for x in ("rq1", "rq1_b", "rq2", "rq2_b", "rq3", "rq6", "rq6_b", "rq7")}
     assert all(s.model_extra["status"] == "proposed" and s.model_extra["languages"] == ["en"] for s in new)

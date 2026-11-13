@@ -22,7 +22,7 @@ REASON_LABELS = {
     "WRONG_DOC_TYPE": "Document type not eligible",
     "WRONG_LANGUAGE": "Language not eligible",
     "OUT_OF_PERIOD": "Published outside the review period",
-    "NOT_IN_JOURNAL_LIST": "Journal not in SCIE or SSCI",
+    "NOT_IN_JOURNAL_LIST": "Journal not in the eligible indexes",
     "NO_AGREEMENT": "No agreement between the AI screeners",
     "WRONG_CONTEXT": "Outside the geographical scope",
     "WRONG_CONCEPT": "No labour-market dimension",

@@ -1,7 +1,7 @@
 # Protocol of the ISABEL chapter review, version 2 (2026-11-13).
 # Source of truth for decisions: docs/DECISIONES_METODO.md
 # Changes from version 1 (config/protocol_isabel_chapter_v1.yaml, kept as approved on 2026-11-11):
-#   - IC5 and journal_lists: only journals indexed in SCIE or SSCI
+#   - IC5 and journal_lists: only journals indexed in SCIE, SSCI or ESCI
 #   - decision_rule: agreement_or_exclude
 #   - supplementary searches for RQ1, RQ2, RQ3, RQ6 and RQ7 (each with its own status)
 # Research questions and criteria IC1-IC4 / EC1-EC3 are unchanged.
@@ -19,6 +19,9 @@ journal_lists:
   - id: wos_ssci_2026
     file: data/raw/journal_lists/wos_ssci_2026.xlsx
     description: "the Social Sciences Citation Index (Web of Science master journal list, June 2026)"
+  - id: wos_esci_2025
+    file: data/raw/journal_lists/wos_esci_2025.xlsx
+    description: "the Emerging Sources Citation Index (Web of Science master journal list, August 2025)"
 
 # include only if both screeners include; the authors decide "one includes, the other is unsure";
 # every other doubt or disagreement, and records without abstract, are excluded.
@@ -63,7 +66,7 @@ criteria:
     reason_code: NOT_IN_JOURNAL_LIST
     kind: include
     dimension: journal
-    rule: "Published in a journal indexed in the Science Citation Index Expanded or the Social Sciences Citation Index (Web of Science master journal lists of June 2026)."
+    rule: "Published in a journal indexed in the Science Citation Index Expanded, the Social Sciences Citation Index (Web of Science master journal lists of June 2026) or the Emerging Sources Citation Index (list of August 2025)."
   - id: EC1
     reason_code: WRONG_CONTEXT
     kind: exclude
@@ -267,6 +270,18 @@ sources:
       jobs: ["job creation", "job destruction", "job losses", "employment effects", "employment impact",
              "employment impacts", "green jobs", "labour demand", "labor demand", occupations]
       transition: *transition
+      geography: *geography
+  - id: openalex_supplementary_rq6_b        # narrower: without "left behind" and "digital divide"; adds the transition block
+    type: openalex
+    field: title_and_abstract
+    languages: [en]
+    applies_to_rqs: [RQ6]
+    status: proposed
+    blocks:
+      just_transition: ["just transition", "coal region", "coal regions", "coal phase-out", "mining regions",
+                        "carbon-intensive regions", "fossil fuel dependent", "geography of discontent",
+                        "green discontent"]
+      labour: [employment, unemployment, jobs, workers, workforce, "labour market", "labor market"]
       geography: *geography
 
 known_items: []            # D7 pending: 20-40 DOIs considered essential by the authors
