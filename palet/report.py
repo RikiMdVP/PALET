@@ -481,6 +481,14 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
                 "relevant or not relevant, quoting the supporting passage, and summarised the study's "
                 "contribution, type of evidence and geography. Assignments whose quote could not be found in "
                 "the record were not counted.", "",
+                "The categories were defined to the model as follows (prompt "
+                f"`assign_system_v1`, sha256 `{manifest['prompts'].get('assign_system_v1', '')[:16]}…`): "
+                "*core*: answering the question is a main purpose or main result of the study; "
+                "*partial*: the study gives some evidence or discussion relevant to the question, but it is "
+                "not its focus; *none*: the text does not address the question. The model was told to be "
+                "conservative: sharing a general topic with a question was not enough. A study could be core "
+                "or partial for several questions, or for none. This classification was made by one model "
+                "from the abstract and was not checked by a second model or by the authors.", "",
                 "| Research question | Core | Partially relevant |", "|---|---|---|"]
         out += [f"| {rq} | {n['core']} | {n['partial']} |" for rq, n in assignment_summary["per_rq"].items()]
         out += ["", f"{assignment_summary['assigned_to_several_rqs']} studies address more than one question; "
