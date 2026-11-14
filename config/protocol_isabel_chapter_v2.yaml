@@ -27,6 +27,10 @@ journal_lists:
 # every other doubt or disagreement, and records without abstract, are excluded.
 decision_rule: agreement_or_exclude
 
+# Only studies that are core to at least one research question are synthesised
+# (decision of both authors, 2026-11-14; see docs/DECISIONES_METODO.md).
+synthesis_selection: core_only
+
 research_questions:      # FROZEN. Only humans may edit.
   RQ1: "What economic-policy recommendations does the literature formulate to mitigate job destruction and boost job creation associated with the green transition in the EU?"
   RQ2: "What recommendations does the literature provide regarding the impact of digitalisation and artificial intelligence on JCD in the EU?"

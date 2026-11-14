@@ -4,6 +4,7 @@ tables and figures. Every number comes from the artefacts of the run.
 
 import csv
 import statistics
+from datetime import date
 from collections import Counter
 from pathlib import Path
 
@@ -22,8 +23,8 @@ REASON_LABELS = {
     "WRONG_DOC_TYPE": "Document type not eligible",
     "WRONG_LANGUAGE": "Language not eligible",
     "OUT_OF_PERIOD": "Published outside the review period",
-    "NOT_IN_JOURNAL_LIST": "Journal not in the eligible indexes",
-    "NO_AGREEMENT": "No agreement between the AI screeners",
+    "NOT_IN_JOURNAL_LIST": "Journal not in eligible indexes",
+    "NO_AGREEMENT": "No agreement between screeners",
     "WRONG_CONTEXT": "Outside the geographical scope",
     "WRONG_CONCEPT": "No labour-market dimension",
     "WRONG_PHENOMENON": "No link to the twin transition",
@@ -40,11 +41,11 @@ def source_label(protocol: Protocol, query_id: str, search: dict) -> str:
     except Exception:
         return query_id
     if source.type == "manual_import":
-        date = str(search.get("executed_at") or "").split(" ")[0]
-        return f"Scopus (web export{', ' + date if date else ''})"
+        when = str(search.get("executed_at") or "").split(" ")[0]
+        return f"Scopus (web export{', ' + when if when else ''})"
     rqs = ", ".join(source.applies_to_rqs)
     name = {"openalex": "OpenAlex", "scopus": "Scopus", "pubmed": "PubMed", "wos": "Web of Science"}[source.type]
-    return f"{name}, supplementary search" + (f" for {rqs}" if rqs else "")
+    return f"{name}, search" + (f" for {rqs}" if rqs else "")
 
 
 # ── Counts ──────────────────────────────────────────────────────────────────
@@ -168,23 +169,43 @@ def draw_prisma(counts: dict, path_without_extension) -> list[str]:
     stage(screen_y, max(screen_h, excl_h), "Screening")
 
     # Included
-    incl_lines = [f"Studies included in the review (n = {counts['included']})",
+    selection = counts.get("selection") or {}
+    narrowed = selection.get("rule") == "core_only"
+    incl_lines = [(f"Studies meeting the eligibility criteria (n = {counts['included']})" if narrowed else
+                   f"Studies included in the review (n = {counts['included']})"),
                   (f"By agreement of two AI screeners (n = {counts['included_by_agreement']})"
                    if len(counts.get("model_screeners", [])) != 1 else
                    f"By a single AI screener (n = {counts['included_by_agreement']})"),
                   f"By decision of the authors (n = {counts['included_by_authors']})"]
     incl_h = 6 + 2.7 * (len(incl_lines) - 1)
     incl_y = screen_y - 9 - incl_h
-    box(left_x, incl_y, left_w, incl_h, "\n".join(incl_lines), palette["box_final"])
+    box(left_x, incl_y, left_w, incl_h, "\n".join(incl_lines),
+        palette["box_main"] if narrowed else palette["box_final"])
     arrow(left_x + left_w / 2, screen_box_y, left_x + left_w / 2, incl_y + incl_h)
-    stage(incl_y, incl_h, "Included")
+    stage(incl_y, incl_h, "Eligibility" if narrowed else "Included")
     if counts["pending"]:
         # Not yet decided: shown apart, so that a provisional diagram cannot be mistaken for a final one.
         box(right_x, incl_y + incl_h - 8.7, right_w, 8.7,
             f"Awaiting the authors' decision (n = {counts['pending']})\nProvisional diagram", palette["box_side"],
             dashed=True)
 
-    ax.set_ylim(incl_y - 3, 100)
+    bottom = incl_y
+    if narrowed:
+        # Last step: only the studies that are core to a research question are synthesised.
+        syn_h = 8.7
+        syn_y = incl_y - 9 - syn_h
+        box(left_x, syn_y, left_w, syn_h,
+            f"Studies synthesised (n = {selection['selected']})\nCore to at least one research question",
+            palette["box_final"])
+        box(right_x, syn_y, right_w, syn_h,
+            f"Eligible, not synthesised (n = {selection['not_selected']})\nNot core to any research question",
+            palette["box_side"])
+        arrow(left_x + left_w / 2, incl_y, left_x + left_w / 2, syn_y + syn_h)
+        arrow(left_x + left_w, syn_y + syn_h / 2, right_x, syn_y + syn_h / 2)
+        stage(syn_y, syn_h, "Included")
+        bottom = syn_y
+
+    ax.set_ylim(bottom - 3, 100)
     return figstyle.save(fig, path_without_extension)
 
 
@@ -271,6 +292,42 @@ def evidence_rows(protocol: Protocol, records: dict[str, Record], assignments: l
                      assignment.contribution_quote or "", quotes, "; ".join(assignment.needs_review),
                      record.record_id])
     return header, rows
+
+
+def evidence_by_rq_markdown(protocol: Protocol, records: dict[str, Record],
+                           assignments: list[RecordAssignment]) -> str:
+    """For each research question, its core studies with what each contributes and the passage behind it.
+
+    This is the material to write the synthesis from: nothing here is generated beyond the one-sentence
+    contribution of the charting step, and every sentence comes with the verbatim passage it rests on.
+    """
+    this_year = date.today().year
+
+    def cites_per_year(record: Record) -> float:
+        return (record.cited_by_count or 0) / max(1, this_year - (record.year or this_year))
+
+    out = ["# Evidence by research question (core studies only)", "",
+           "Generated by PALET from the charting step. Each entry: citation, journal, type of evidence, "
+           "geography; the contribution as summarised by the model; and the verbatim passages of the record "
+           "that support the contribution and the assignment to the question. Check each study against its "
+           "full text before citing it. Within a question, studies are ordered by citations per year.", ""]
+    for rq, question in protocol.research_questions.items():
+        core = [a for a in assignments if rq in a.rqs("core")]
+        core.sort(key=lambda a: cites_per_year(records[a.record_id]), reverse=True)
+        out += [f"## {rq} — {len(core)} core studies", "", f"*{question}*", ""]
+        for a in core:
+            record = records[a.record_id]
+            quote = next((i.evidence_quote for i in a.items if i.rq == rq), "")
+            where = "; ".join(a.geography) or "not stated"
+            out += [f"### {short_citation(record)}. {record.title}",
+                    f"{record.source_title or 'journal not stated'} · {a.evidence_type or 'type not stated'} · "
+                    f"{where} · cited {record.cited_by_count or 0} times · "
+                    + (f"https://doi.org/{record.doi}" if record.doi else "no DOI"), "",
+                    f"- **Contribution:** {a.contribution}",
+                    f"- **Passage behind it:** “{a.contribution_quote or ''}”"
+                    + ("" if a.contribution_quote_verified else " *(not found verbatim in the record: check)*"),
+                    f"- **Why core to {rq}:** “{quote}”", ""]
+    return "\n".join(out)
 
 
 def citations_by_rq(protocol: Protocol, records: dict[str, Record], assignments: list[RecordAssignment]) -> tuple[list, list]:
@@ -489,6 +546,13 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
                 "conservative: sharing a general topic with a question was not enough. A study could be core "
                 "or partial for several questions, or for none. This classification was made by one model "
                 "from the abstract and was not checked by a second model or by the authors.", "",
+                *([f"**Selection for the synthesis.** Only the studies that were core to at least one research "
+                   f"question were synthesised: {counts['selection']['selected']} of the {counts['included']} "
+                   f"eligible studies. The remaining {counts['selection']['not_selected']} met the eligibility "
+                   "criteria but addressed the questions only partially or not at all; they are listed in "
+                   "`evidence_table.csv`. The review is therefore not exhaustive: it synthesises the studies "
+                   "most directly concerned with each question.", ""]
+                  if (counts.get("selection") or {}).get("rule") == "core_only" else []),
                 "| Research question | Core | Partially relevant |", "|---|---|---|"]
         out += [f"| {rq} | {n['core']} | {n['partial']} |" for rq, n in assignment_summary["per_rq"].items()]
         out += ["", f"{assignment_summary['assigned_to_several_rqs']} studies address more than one question; "
@@ -541,9 +605,6 @@ def build_report(run: Run, protocol: Protocol, partial_year: int | None = None) 
     run.write_json("report/prisma_counts.json", counts)
     written = ["report/prisma_counts.json"]
 
-    draw_prisma(counts, out_dir / "prisma_flow")
-    written += ["report/prisma_flow.pdf", "report/prisma_flow.png"]
-
     records = {r.record_id: r for r in run.read_models("records.jsonl", Record)}
     finals = run.read_models("final_decisions.jsonl", FinalDecision)
 
@@ -561,6 +622,16 @@ def build_report(run: Run, protocol: Protocol, partial_year: int | None = None) 
         assignments = [a for a in run.read_models("assignments.jsonl", RecordAssignment)
                        if a.record_id in included_ids]
         assignment_summary = summarize(protocol, assignments)
+        selected = [a for a in assignments if a.rqs("core")] if protocol.synthesis_selection == "core_only" \
+            else assignments
+        counts["selection"] = {"rule": protocol.synthesis_selection, "selected": len(selected),
+                               "not_selected": len(included_ids) - len(selected)}
+        run.write_json("report/prisma_counts.json", counts)
+        header, rows = evidence_rows(protocol, records, selected)
+        _write_csv(out_dir / "selected_studies.csv", header, rows)
+        (out_dir / "evidence_by_rq.md").write_text(
+            evidence_by_rq_markdown(protocol, records, selected), encoding="utf-8")
+        written += ["report/selected_studies.csv", "report/evidence_by_rq.md"]
         (out_dir / "table_included_by_rq.md").write_text(
             included_by_rq_markdown(protocol, records, assignments), encoding="utf-8")
         header, rows = evidence_rows(protocol, records, assignments)
@@ -568,11 +639,14 @@ def build_report(run: Run, protocol: Protocol, partial_year: int | None = None) 
         header, rows = citations_by_rq(protocol, records, assignments)
         _write_csv(out_dir / "citations_by_rq.csv", header, rows)
         draw_included_by_rq(protocol, assignments, out_dir / "fig_included_by_rq")
-        draw_included_by_year([records[a.record_id] for a in assignments], out_dir / "fig_included_by_year",
+        draw_included_by_year([records[a.record_id] for a in selected], out_dir / "fig_included_by_year",
                               partial_year=partial_year)
         written += ["report/table_included_by_rq.md", "report/evidence_table.csv", "report/citations_by_rq.csv",
                     "report/fig_included_by_rq.pdf", "report/fig_included_by_rq.png",
                     "report/fig_included_by_year.pdf", "report/fig_included_by_year.png"]
+
+    draw_prisma(counts, out_dir / "prisma_flow")
+    written += ["report/prisma_flow.pdf", "report/prisma_flow.png"]
 
     rows = checklist_rows(counts, has_assignments)
     (out_dir / "prisma_scr_checklist.md").write_text(checklist_markdown(rows), encoding="utf-8")

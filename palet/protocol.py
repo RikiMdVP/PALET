@@ -75,6 +75,9 @@ class Protocol(BaseModel):
     known_items: list[str] = Field(default_factory=list)
     journal_lists: list[JournalList] = Field(default_factory=list)   # empty: no journal filter
     decision_rule: DecisionRule = "adjudicate_all"
+    # Which included studies are synthesised: all of them, or only those that the charting step
+    # found core to at least one research question.
+    synthesis_selection: Literal["all_included", "core_only"] = "all_included"
 
     @field_validator("research_questions")
     @classmethod

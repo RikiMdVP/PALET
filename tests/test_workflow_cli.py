@@ -356,3 +356,24 @@ def test_screeners_option_rejects_unknown_models(workspace):
     assert cli.main(["init", "--protocol", str(w.protocol), "--label", "test", "--run-id", "t1"]) == 0
     assert cli.main(["screen", "--run", "t1", "--screeners", "not-a-model"]) != 0
     assert w.model.calls == 0
+
+
+def test_report_with_core_only_selection(workspace, capsys):
+    """Protocol asks to synthesise only core studies: the report narrows the flow and says so."""
+    w = workspace
+    data = yaml.safe_load(w.protocol.read_text(encoding="utf-8"))
+    data["synthesis_selection"] = "core_only"
+    w.protocol.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    assert cli.main(["init", "--protocol", str(w.protocol), "--label", "test", "--run-id", "t1"]) == 0
+    assert cli.main(["screen", "--run", "t1", "--screeners", "claude-opus-5-5"]) == 0     # both records included
+    assert cli.main(["assign", "--run", "t1"]) == 0
+    assert cli.main(["report", "--run", "t1"]) == 0
+    report_dir = w.run_dir / "report"
+    counts = json.loads((report_dir / "prisma_counts.json").read_text(encoding="utf-8"))
+    assert counts["selection"] == {"rule": "core_only", "selected": 2, "not_selected": 0}
+    evidence = (report_dir / "evidence_by_rq.md").read_text(encoding="utf-8")
+    assert "## RQ1 — 1 core studies" in evidence and "## RQ6 — 0 core studies" in evidence
+    assert "**Why core to RQ1:** “coal mine closures in Silesia, Poland”" in evidence
+    assert (report_dir / "selected_studies.csv").stat().st_size > 0
+    assert "Only the studies that were core to at least one research question were synthesised: 2 of the 2" in \
+        (report_dir / "methods_appendix.md").read_text(encoding="utf-8")
