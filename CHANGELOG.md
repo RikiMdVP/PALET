@@ -3,6 +3,14 @@
 All notable changes to PALET are recorded here, one entry per work package
 of the PALET 2.0 refactor (see `docs/PALET_auditoria_plan_mejora.tex`).
 
+## Dashboard 2.0 and selection for the synthesis — 2026-11-14
+
+### Added
+- `/workflow` redesigned as a terminal with buttons: a diagram of the eight steps of a review (protocol, search, duplicates, journals, screening, human decision, charting, report) that shows what is done, what comes next and, while a step runs, where the process is; a panel per step; live output of each command.
+- PALET, a pixel-art robot that comments on each step, asks before anything that costs money and reports errors.
+- From the dashboard: start a review from a protocol of `config/`, count and download the approved searches, re-read sources, check journals. Approving a search stays in the terminal.
+- `synthesis_selection: core_only` in the protocol: only studies core to a research question are synthesised; the PRISMA flow shows that step. New report files `evidence_by_rq.md` and `selected_studies.csv`.
+
 ## Protocol v2: journal filter and decision rule — 2026-11-13
 
 ### Added

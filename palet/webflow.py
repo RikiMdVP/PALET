@@ -39,10 +39,13 @@ RUNS_DIR = ROOT / "runs"
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_LOG_LINES = 2000
 PAID_STEPS = {"screen", "assign"}
-STEPS = {"dedup", "screen", "assign", "report"}
+STEPS = {"search", "dedup", "reparse", "journals", "screen", "assign", "report"}
+CONFIG_DIR = ROOT / "config"
 
 _RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,80}$")
 _INITIALS = re.compile(r"^[A-Za-z]{2,6}$")
+_SOURCE_ID = re.compile(r"^[A-Za-z0-9_]{1,80}$")
+_LABEL = re.compile(r"^[\w .,()\-]{1,80}$")
 
 _lock = threading.Lock()
 _job = {"running": False, "run_id": None, "step": None, "started_at": None, "finished_at": None,
@@ -112,9 +115,74 @@ def list_runs() -> list[dict]:
     return sorted(runs, key=lambda r: r["updated_at"] or "", reverse=True)
 
 
+def _protocol_of_run(manifest: dict):
+    """The protocol of a run as an object, or None when its file cannot be read."""
+    from palet.protocol import load_protocol
+    stored = Path((manifest.get("protocol") or {}).get("path") or "")
+    candidates = [stored if stored.is_absolute() else ROOT / stored, CONFIG_DIR / stored.name]
+    for candidate in candidates:
+        if candidate.is_file():
+            try:
+                return load_protocol(candidate)
+            except PaletConfigError:
+                return None
+    return None
+
+
+def _stages(protocol, manifest, records, screening, last_screen, assignments, report_files, path) -> list[dict]:
+    """The steps of the review in order, each done / current / todo / skipped, with one line of detail."""
+    searches = manifest.get("searches", [])
+    downloaded = {s.get("query_id") for s in searches}
+    approved = [s.id for s in (protocol.sources if protocol else [])
+                if s.type != "manual_import" and s.model_extra.get("status") == "approved"]
+    waiting = [s for s in approved if s not in downloaded]
+    screened = screening["records"] if screening else 0
+    full_screen = bool(screening) and records is not None and screened >= records \
+        and not (last_screen or {}).get("limit")
+    has_lists = bool(protocol and protocol.journal_lists)
+    selection = (_read_json(path / "report" / "prisma_counts.json", {}) or {}).get("selection") or {}
+
+    stages = [
+        {"id": "protocol", "label": "Protocolo", "done": bool((manifest.get("protocol") or {}).get("status") == "approved"),
+         "detail": f"v{(manifest.get('protocol') or {}).get('version')} · {(manifest.get('protocol') or {}).get('status')}"},
+        {"id": "search", "label": "Búsqueda", "done": bool(searches) and not waiting,
+         "detail": f"{len(searches)} fuentes · {sum(s.get('downloaded') or 0 for s in searches)} registros"
+                   + (f" · {len(waiting)} aprobadas sin descargar" if waiting else "")},
+        {"id": "dedup", "label": "Duplicados", "done": records is not None,
+         "detail": f"{records} únicos" if records is not None else "sin hacer"},
+        {"id": "journals", "label": "Revistas", "done": has_lists and (path / "journal_check.csv").is_file(),
+         "skipped": not has_lists,
+         "detail": ("comprobadas" if (path / "journal_check.csv").is_file() else "sin comprobar") if has_lists
+                   else "el protocolo no filtra por revista"},
+        {"id": "screen", "label": "Cribado", "done": full_screen,
+         "detail": f"{screened} de {records or 0} con decisión" if records else "sin registros"},
+        {"id": "adjudicate", "label": "Decisión humana", "done": full_screen and screening["pending"] == 0,
+         "detail": f"{screening['pending']} pendientes" if screening else "tras el cribado"},
+        {"id": "assign", "label": "Asignación", "done": bool(screening) and assignments is not None
+            and assignments >= screening["include"] > 0,
+         "detail": f"{assignments or 0} de {screening['include'] if screening else 0} incluidos"},
+        {"id": "report", "label": "Informe", "done": "prisma_flow.pdf" in report_files,
+         "detail": (f"{selection['selected']} estudios en la síntesis" if selection.get("selected") is not None
+                    else ("generado" if "prisma_flow.pdf" in report_files else "sin generar"))},
+    ]
+    current_set = False
+    for stage in stages:
+        if stage.pop("skipped", False):
+            stage["status"] = "skipped"
+        elif stage.pop("done"):
+            stage["status"] = "done"
+        elif not current_set:
+            stage["status"], current_set = "current", True
+        else:
+            stage["status"] = "todo"
+        stage.pop("done", None)
+    return stages
+
+
 def run_overview(run_id: str) -> dict:
     path = run_path(run_id)
     manifest = _read_json(path / "manifest.json", {})
+    review_protocol = _protocol_of_run(manifest)
     steps = manifest.get("steps", [])
     screen_steps = [s for s in steps if s.get("step") == "screen"]
     last_screen = screen_steps[-1] if screen_steps else None
@@ -142,7 +210,7 @@ def run_overview(run_id: str) -> dict:
     elif "prisma_flow.pdf" not in report_files:
         hint = "Falta generar el informe (paso 5)."
     else:
-        hint = "Todos los pasos están hechos. Si cambias algo, vuelve a generar el informe."
+        hint = "Todos los pasos están hechos. Si cambiáis algo, vuelvo a generar el informe."
 
     return {
         "run_id": run_id,
@@ -150,7 +218,20 @@ def run_overview(run_id: str) -> dict:
         "created_at": manifest.get("created_at"),
         "updated_at": manifest.get("updated_at"),
         "protocol": {"version": protocol.get("version"), "status": protocol.get("status"),
-                     "approved_by": protocol.get("approved_by"), "file": Path(protocol.get("path") or "").name},
+                     "approved_by": protocol.get("approved_by"), "file": Path(protocol.get("path") or "").name,
+                     "title": review_protocol.title if review_protocol else None,
+                     "decision_rule": review_protocol.decision_rule if review_protocol else None,
+                     "journal_lists": [j.id for j in review_protocol.journal_lists] if review_protocol else [],
+                     "synthesis_selection": review_protocol.synthesis_selection if review_protocol else None,
+                     "research_questions": review_protocol.research_questions if review_protocol else {}},
+        "sources": [{"id": s.id, "type": s.type, "status": s.model_extra.get("status"),
+                     "rqs": s.applies_to_rqs,
+                     "downloaded": next((x.get("downloaded") for x in manifest.get("searches", [])
+                                         if x.get("query_id") == s.id), None)}
+                    for s in (review_protocol.sources if review_protocol else [])],
+        "stages": _stages(review_protocol, manifest, records, screening, last_screen, assignments,
+                          report_files, path),
+        "selection": (_read_json(report_dir / "prisma_counts.json", {}) or {}).get("selection"),
         "searches": [{"query_id": s.get("query_id"), "total_hits": s.get("total_hits"),
                       "downloaded": s.get("downloaded"), "truncated": bool(s.get("truncated")),
                       "executed_at": s.get("executed_at")} for s in manifest.get("searches", [])],
@@ -200,6 +281,12 @@ def clean_options(step: str, body: dict) -> dict:
             if not isinstance(year, int) or isinstance(year, bool) or not 1900 <= year <= 2100:
                 raise WorkflowError("El año parcial no es válido.")
             options["partial_year"] = year
+    if step == "search":
+        source = body.get("source")
+        if not isinstance(source, str) or not _SOURCE_ID.match(source):
+            raise WorkflowError("Indica una fuente del protocolo.")
+        options["source"] = source
+        options["count_only"] = bool(body.get("count_only"))
     if step in PAID_STEPS:
         options["replay"] = bool(body.get("replay"))
     return options
@@ -213,6 +300,10 @@ def build_command(step: str, run_id: str, options: dict, estimate: bool = False)
         command += ["--limit", str(options["limit"])]
     if options.get("partial_year"):
         command += ["--partial-year", str(options["partial_year"])]
+    if options.get("source"):
+        command += ["--source", options["source"], "--max-records", "2000"]
+        if options.get("count_only"):
+            command.append("--count-only")
     if estimate:
         command.append("--estimate")
     elif options.get("replay"):
@@ -252,7 +343,7 @@ def start_job(run_id: str, step: str, command: list[str]) -> None:
         if other_job_running():
             raise WorkflowError("El pipeline antiguo está en ejecución. Espera a que termine.", status=409)
         _job.update(running=True, run_id=run_id, step=step, started_at=_now(), finished_at=None,
-                    returncode=None, log=[])
+                    returncode=None, log=[], command="python -m palet " + " ".join(command[3:]))
 
     def log(line: str) -> None:
         with _lock:
@@ -286,6 +377,51 @@ def _error(e: WorkflowError) -> JSONResponse:
 @router.get("/runs")
 async def api_runs():
     return JSONResponse(list_runs())
+
+
+@router.get("/protocols")
+async def api_protocols():
+    """Protocol files in config/ that a new review can start from."""
+    from palet.protocol import load_protocol
+    found = []
+    for path in sorted(CONFIG_DIR.glob("*.yaml")):
+        try:
+            protocol = load_protocol(path)
+        except PaletConfigError as e:
+            found.append({"file": path.name, "error": str(e)})
+            continue
+        found.append({"file": path.name, "title": protocol.title, "version": protocol.version,
+                      "status": protocol.status, "questions": len(protocol.research_questions)})
+    return JSONResponse(found)
+
+
+@router.post("/runs")
+async def api_create_run(request: Request):
+    """Start a review: create a run from a protocol of config/ (same as `python -m palet init`)."""
+    body = await request.json()
+    try:
+        protocol_file, label, run_id = body.get("protocol"), body.get("label"), body.get("run_id")
+        if not isinstance(protocol_file, str) or protocol_file not in {p.name for p in CONFIG_DIR.glob("*.yaml")}:
+            raise WorkflowError("Elige un protocolo de la carpeta config/.")
+        if not isinstance(label, str) or not _LABEL.match(label.strip()):
+            raise WorkflowError("El nombre de la revisión no es válido (letras, números y espacios; máximo 80).")
+        if not isinstance(run_id, str) or not _RUN_ID.match(run_id) or run_id.startswith((".", "_")):
+            raise WorkflowError("El identificador solo admite letras, números, guiones y guiones bajos.")
+        if (RUNS_DIR / run_id).exists():
+            raise WorkflowError(f"Ya existe una ejecución llamada '{run_id}'.", status=409)
+        with _lock:
+            if _job["running"]:
+                raise WorkflowError("Ya hay un paso en ejecución. Espera a que termine.", status=409)
+        code, output = _run_and_capture([sys.executable, "-m", "palet", "init", "--protocol",
+                                         str(CONFIG_DIR / protocol_file), "--label", label.strip(),
+                                         "--run-id", run_id])
+    except WorkflowError as e:
+        return _error(e)
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"error": "La creación tardó demasiado."}, status_code=504)
+    if code != 0:
+        return JSONResponse({"error": output or "No se pudo crear la ejecución."}, status_code=400)
+    return JSONResponse({"run_id": run_id, "output": output})
 
 
 @router.get("/screeners")

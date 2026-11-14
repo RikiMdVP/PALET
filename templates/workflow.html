@@ -4,168 +4,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PALET · Revisión 2.0</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        body { display: block; overflow: auto; height: auto; }
-        .wf-page { max-width: 1040px; margin: 0 auto; padding: 28px 24px 80px; }
-        .wf-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
-        .wf-top h1 { font-family: var(--font-display); font-weight: 400; font-size: 34px; margin: 0; }
-        .wf-top a { color: var(--accent); font-size: 13.5px; text-decoration: none; }
-        .wf-sub { color: var(--text-secondary); font-size: 14px; margin: 0 0 22px; max-width: 70ch; }
-        .wf-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
-        .wf-card h2 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
-        .wf-card p.wf-help { color: var(--text-secondary); font-size: 13.5px; margin: 0 0 14px; max-width: 75ch; }
-        .wf-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-        .wf-field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--text-secondary); }
-        .wf-field select, .wf-field input[type="text"], .wf-field input[type="number"] { font-family: var(--font); font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-xs); background: var(--bg-card); color: var(--text); min-width: 0; }
-        .wf-field select { min-width: 250px; }
-        .wf-check { display: flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--text); margin-top: 12px; }
-        .wf-hint { background: var(--accent-light); border: 1px solid var(--accent); color: var(--text); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 14px; margin-bottom: 16px; }
-        .wf-warn { background: var(--orange-bg); border: 1px solid var(--orange); border-radius: var(--radius-xs); padding: 9px 12px; font-size: 13px; margin-top: 12px; }
-        .wf-error { background: var(--red-bg); border: 1px solid var(--red); border-radius: var(--radius-xs); padding: 9px 12px; font-size: 13px; margin-top: 12px; white-space: pre-wrap; }
-        .wf-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 4px 0 6px; }
-        .wf-stat { background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 12px 14px; }
-        .wf-stat b { display: block; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
-        .wf-stat span { font-size: 12px; color: var(--text-secondary); }
-        .wf-pre { font-family: var(--font-mono); font-size: 12px; line-height: 1.55; background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-xs); padding: 12px 14px; margin-top: 12px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
-        .wf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .wf-table th { text-align: left; font-weight: 500; color: var(--text-secondary); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--border); }
-        .wf-table td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--border-light); font-variant-numeric: tabular-nums; }
-        .wf-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .wf-files a { font-size: 12.5px; color: var(--accent); background: var(--accent-light); border-radius: var(--radius-full); padding: 4px 11px; text-decoration: none; }
-        .wf-muted { color: var(--text-dim); font-size: 13px; }
-        .wf-step-n { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; margin-right: 8px; }
-        [hidden] { display: none !important; }
-    </style>
+    <title>PALET · revisión</title>
+    <link rel="stylesheet" href="/static/css/workflow.css">
 </head>
 
 <body>
-    <main class="wf-page">
-        <div class="wf-top">
-            <h1>Revisión 2.0</h1>
-            <a href="/">← Volver al dashboard del pipeline antiguo</a>
+    <header class="bar">
+        <div class="brand"><span class="dot"></span>palet<span class="dim">@</span><span id="bar-run">—</span><span class="dim">:~$</span><span class="caret"></span></div>
+        <div class="bar-actions">
+            <label class="inline">ejecución <select id="run-select"></select></label>
+            <button class="btn" id="new-btn" type="button">+ nueva revisión</button>
+            <button class="btn ghost" id="refresh-btn" type="button">actualizar</button>
+            <a class="btn ghost" href="/">pipeline antiguo</a>
         </div>
-        <p class="wf-sub">Flujo nuevo de PALET: deduplicar, cribar con uno o dos modelos, decidir los dudosos,
-            asignar a las preguntas de investigación y generar el informe. Cada botón ejecuta el mismo comando que
-            escribirías en la terminal. Las búsquedas y la aprobación del protocolo se hacen desde la terminal.</p>
+    </header>
 
-        <section class="wf-card">
-            <div class="wf-row">
-                <label class="wf-field">Ejecución
-                    <select id="run-select"></select>
-                </label>
-                <button class="btn" id="refresh-btn" type="button">Actualizar</button>
-                <span class="wf-muted" id="run-meta"></span>
+    <main class="page">
+        <section class="hero">
+            <div class="robot-wrap">
+                <svg id="robot" viewBox="0 0 16 16" role="img" aria-label="PALET, el asistente de la revisión"></svg>
             </div>
-            <div class="wf-error" id="page-error" hidden></div>
+            <div class="bubble" aria-live="polite"><span class="who">PALET&gt;</span> <span id="say"></span></div>
+            <div class="stats" id="stats"></div>
         </section>
 
-        <div id="run-area" hidden>
-            <div class="wf-hint" id="hint"></div>
+        <div class="notice error" id="page-error" hidden></div>
 
-            <section class="wf-card">
-                <h2>Estado</h2>
-                <div class="wf-stats" id="stats"></div>
-                <p class="wf-muted" id="screen-info"></p>
-                <table class="wf-table" id="searches"></table>
-            </section>
+        <section class="flow" id="flow" aria-label="Pasos de la revisión"></section>
 
-            <section class="wf-card" id="job-card" hidden>
-                <h2 id="job-title">Paso en ejecución</h2>
-                <div class="wf-pre" id="job-log"></div>
-            </section>
+        <section class="work" id="work" hidden>
+            <div class="panel" id="stage-panel">
+                <div class="panel-head"><span class="prompt">$</span> <span id="stage-title"></span></div>
+                <p class="help" id="stage-help"></p>
 
-            <section class="wf-card">
-                <h2><span class="wf-step-n">1</span>Deduplicar</h2>
-                <p class="wf-help">Une los registros repetidos entre fuentes. Hay que repetirlo cada vez que se añade
-                    una búsqueda. No cuesta dinero.</p>
-                <button class="btn" type="button" data-run-step="dedup">Deduplicar</button>
-            </section>
+                <div class="stage" data-stage="protocol">
+                    <dl class="kv" id="protocol-kv"></dl>
+                    <ol class="rqs" id="protocol-rqs"></ol>
+                    <p class="note">El protocolo se edita en su fichero de <code>config/</code>. Lo aprueban los autores; PALET no lo cambia.</p>
+                </div>
 
-            <section class="wf-card">
-                <h2><span class="wf-step-n">2</span>Cribado</h2>
-                <p class="wf-help">Cada cribador juzga todos los registros con los criterios del protocolo. Con dos,
-                    solo es firme lo que deciden igual y el resto va a vuestra revisión. Con uno, sus decisiones son
-                    firmes sin contraste.</p>
-                <div class="wf-row">
-                    <label class="wf-field">Cribador A
-                        <select id="screener-a"></select>
-                    </label>
-                    <label class="wf-field">Cribador B
-                        <select id="screener-b"></select>
-                    </label>
-                    <label class="wf-field">Solo los primeros N (prueba)
-                        <input type="number" id="screen-limit" min="1" placeholder="todos" style="width:130px">
-                    </label>
+                <div class="stage" data-stage="search">
+                    <table class="table" id="sources"></table>
+                    <p class="note">Una cadena solo se puede descargar cuando los autores la aprueban. Se hace en la terminal, a propósito:<br>
+                        <code id="approve-cmd"></code></p>
                 </div>
-                <div class="wf-warn" id="screener-warning" hidden></div>
-                <div class="wf-row" style="margin-top:14px">
-                    <button class="btn" type="button" id="screen-estimate-btn">Estimar coste</button>
-                    <button class="btn" type="button" id="screen-replay-btn"
-                        title="Rehace el cribado solo con respuestas ya guardadas; no gasta">Repetir desde la caché</button>
-                </div>
-                <div class="wf-pre" id="screen-estimate" hidden></div>
-                <label class="wf-check" id="screen-confirm-row" hidden>
-                    <input type="checkbox" id="screen-confirm"> He visto la estimación y autorizo este gasto
-                </label>
-                <div style="margin-top:12px">
-                    <button class="btn btn-primary" type="button" id="screen-run-btn" disabled>Lanzar cribado</button>
-                </div>
-                <div class="wf-error" id="screen-error" hidden></div>
-            </section>
 
-            <section class="wf-card">
-                <h2><span class="wf-step-n">3</span>Decisión de los pendientes</h2>
-                <p class="wf-help">Descarga el Excel, rellena la decisión de cada registro pendiente y súbelo. Si falta
-                    algo o hay un valor no válido, se rechaza el libro entero y no se cambia nada.</p>
-                <div class="wf-row">
-                    <a class="btn" id="adjudication-download" href="#">Descargar Excel</a>
-                    <label class="wf-field">Excel rellenado
-                        <input type="file" id="adjudication-file" accept=".xlsx">
-                    </label>
-                    <label class="wf-field">Tus iniciales
-                        <input type="text" id="adjudication-initials" maxlength="6" style="width:90px">
-                    </label>
-                    <button class="btn btn-primary" type="button" id="adjudication-btn">Subir decisiones</button>
+                <div class="stage" data-stage="dedup">
+                    <div class="row">
+                        <button class="btn primary" type="button" data-step="dedup">deduplicar</button>
+                        <button class="btn" type="button" data-step="reparse" title="Reconstruye los registros a partir de los datos en bruto ya descargados">releer fuentes</button>
+                    </div>
                 </div>
-                <div class="wf-error" id="adjudication-error" hidden></div>
-            </section>
 
-            <section class="wf-card">
-                <h2><span class="wf-step-n">4</span>Asignación a las preguntas de investigación</h2>
-                <p class="wf-help">Clasifica cada estudio incluido frente a cada pregunta (principal, parcial o
-                    ninguna) con una cita literal que lo justifique. Usa el modelo de <code>[assignment]</code> en
-                    <code>palet.toml</code>.</p>
-                <div class="wf-row">
-                    <button class="btn" type="button" id="assign-estimate-btn">Estimar coste</button>
-                    <button class="btn" type="button" id="assign-replay-btn">Repetir desde la caché</button>
+                <div class="stage" data-stage="journals">
+                    <div class="row">
+                        <button class="btn primary" type="button" data-step="journals">comprobar revistas</button>
+                        <a class="btn ghost" id="journals-download" href="#">journal_check.csv</a>
+                    </div>
+                    <p class="note" id="journals-note"></p>
                 </div>
-                <div class="wf-pre" id="assign-estimate" hidden></div>
-                <label class="wf-check" id="assign-confirm-row" hidden>
-                    <input type="checkbox" id="assign-confirm"> He visto la estimación y autorizo este gasto
-                </label>
-                <div style="margin-top:12px">
-                    <button class="btn btn-primary" type="button" id="assign-run-btn" disabled>Lanzar asignación</button>
-                </div>
-                <div class="wf-error" id="assign-error" hidden></div>
-            </section>
 
-            <section class="wf-card">
-                <h2><span class="wf-step-n">5</span>Informe</h2>
-                <p class="wf-help">Diagrama PRISMA, lista PRISMA-ScR, apéndice de métodos, excluidos con motivo, tablas
-                    y figuras. Todos los números salen de los ficheros de la ejecución. No cuesta dinero.</p>
-                <div class="wf-row">
-                    <label class="wf-field">Año incompleto en la figura por año (opcional)
-                        <input type="number" id="partial-year" min="1900" max="2100" style="width:130px">
-                    </label>
-                    <button class="btn btn-primary" type="button" id="report-btn">Generar informe</button>
+                <div class="stage" data-stage="screen">
+                    <div class="row">
+                        <label class="field">cribador A <select id="screener-a"></select></label>
+                        <label class="field">cribador B <select id="screener-b"></select></label>
+                        <label class="field">solo los primeros N <input type="number" id="screen-limit" min="1" placeholder="todos"></label>
+                    </div>
+                    <div class="notice warn" id="screener-warning" hidden></div>
+                    <div class="row">
+                        <button class="btn" type="button" id="screen-estimate-btn">estimar coste</button>
+                        <button class="btn ghost" type="button" id="screen-replay-btn" title="Rehace el cribado solo con respuestas guardadas; no gasta">repetir desde la caché</button>
+                    </div>
+                    <pre class="out" id="screen-estimate" hidden></pre>
+                    <label class="check" id="screen-confirm-row" hidden><input type="checkbox" id="screen-confirm"> he visto la estimación y autorizo este gasto</label>
+                    <div class="row"><button class="btn primary" type="button" id="screen-run-btn" disabled>lanzar cribado</button></div>
+                    <div class="notice error" id="screen-error" hidden></div>
                 </div>
-                <div class="wf-error" id="report-error" hidden></div>
-                <div class="wf-files" id="report-files"></div>
-            </section>
-        </div>
+
+                <div class="stage" data-stage="adjudicate">
+                    <div class="row">
+                        <a class="btn" id="adjudication-download" href="#">descargar excel</a>
+                        <label class="field">excel rellenado <input type="file" id="adjudication-file" accept=".xlsx"></label>
+                        <label class="field">iniciales <input type="text" id="adjudication-initials" maxlength="6"></label>
+                        <button class="btn primary" type="button" id="adjudication-btn">subir decisiones</button>
+                    </div>
+                    <div class="notice error" id="adjudication-error" hidden></div>
+                </div>
+
+                <div class="stage" data-stage="assign">
+                    <div class="row">
+                        <button class="btn" type="button" id="assign-estimate-btn">estimar coste</button>
+                        <button class="btn ghost" type="button" id="assign-replay-btn">repetir desde la caché</button>
+                    </div>
+                    <pre class="out" id="assign-estimate" hidden></pre>
+                    <label class="check" id="assign-confirm-row" hidden><input type="checkbox" id="assign-confirm"> he visto la estimación y autorizo este gasto</label>
+                    <div class="row"><button class="btn primary" type="button" id="assign-run-btn" disabled>lanzar asignación</button></div>
+                    <div class="notice error" id="assign-error" hidden></div>
+                </div>
+
+                <div class="stage" data-stage="report">
+                    <div class="row">
+                        <label class="field">año incompleto (opcional) <input type="number" id="partial-year" min="1900" max="2100"></label>
+                        <button class="btn primary" type="button" id="report-btn">generar informe</button>
+                    </div>
+                    <div class="files" id="report-files"></div>
+                </div>
+
+                <div class="notice error" id="stage-error" hidden></div>
+            </div>
+
+            <div class="panel term">
+                <div class="panel-head"><span class="prompt">$</span> <span id="job-command">salida</span><span class="state" id="job-state"></span></div>
+                <pre class="log" id="job-log">Aquí aparece la salida de cada paso, tal como la verías en la terminal.</pre>
+            </div>
+        </section>
     </main>
+
+    <dialog id="new-dialog">
+        <form method="dialog" id="new-form">
+            <div class="panel-head"><span class="prompt">$</span> nueva revisión</div>
+            <p class="help">Crea una ejecución a partir de un protocolo de <code>config/</code> e importa sus fuentes manuales.</p>
+            <label class="field wide">protocolo <select id="new-protocol"></select></label>
+            <label class="field wide">nombre <input type="text" id="new-label" maxlength="80" placeholder="p. ej. Capítulo ISABEL"></label>
+            <label class="field wide">identificador <input type="text" id="new-id" maxlength="60" placeholder="p. ej. isabel_v2"></label>
+            <div class="notice error" id="new-error" hidden></div>
+            <div class="row end">
+                <button class="btn ghost" type="button" id="new-cancel">cancelar</button>
+                <button class="btn primary" type="button" id="new-create">crear</button>
+            </div>
+        </form>
+    </dialog>
+
     <script src="/static/js/workflow.js"></script>
 </body>
 

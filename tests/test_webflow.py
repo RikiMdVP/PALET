@@ -155,3 +155,46 @@ def test_adjudication_upload(client):
     saved = client.run_dir / "uploads" / done.json()["saved_as"]
     assert saved.read_bytes() == b"PK-data" and saved.name.endswith("_RMV.xlsx")
     assert client.commands[-1][3:] == ["adjudicate", "--run", "demo", "--file", str(saved), "--initials", "RMV"]
+
+
+def test_overview_reports_the_stages_in_order(client):
+    stages = client.get("/api/v2/runs/demo").json()["stages"]
+    assert [s["id"] for s in stages] == ["protocol", "search", "dedup", "journals", "screen", "adjudicate",
+                                         "assign", "report"]
+    status = {s["id"]: s["status"] for s in stages}
+    assert status["protocol"] == "done" and status["dedup"] == "done" and status["screen"] == "done"
+    assert status["journals"] == "skipped"                     # the protocol of the fixture cannot be read: no lists
+    assert status["adjudicate"] == "current"                   # one record is pending
+    assert status["assign"] == "todo" and status["report"] == "todo"
+
+
+def test_search_and_free_steps_build_the_right_commands(client):
+    assert client.post("/api/v2/runs/demo/run", json={"step": "search", "source": "openalex_rq1",
+                                                      "count_only": True}).status_code == 200
+    _wait_for_job()
+    assert client.commands[-1][3:] == ["search", "--run", "demo", "--source", "openalex_rq1",
+                                       "--max-records", "2000", "--count-only"]
+    for step in ("journals", "reparse"):
+        assert client.post("/api/v2/runs/demo/run", json={"step": step}).status_code == 200
+        _wait_for_job()
+        assert client.commands[-1][3:] == [step, "--run", "demo"]
+    bad = client.post("/api/v2/runs/demo/run", json={"step": "search", "source": "x; rm -rf ."})
+    assert bad.status_code == 400
+
+
+def test_protocols_are_listed_and_a_review_can_be_started(client, tmp_path, monkeypatch):
+    listed = client.get("/api/v2/protocols").json()
+    assert {"protocol_isabel_chapter_v1.yaml", "protocol_isabel_chapter_v2.yaml"} <= {p["file"] for p in listed}
+    assert all(p.get("status") == "approved" for p in listed if p["file"].startswith("protocol_isabel"))
+
+    ok = client.post("/api/v2/runs", json={"protocol": "protocol_isabel_chapter_v2.yaml", "label": "Mi revisión",
+                                           "run_id": "nueva_1"})
+    assert ok.status_code == 200 and ok.json()["run_id"] == "nueva_1"
+    assert client.commands[-1][3:5] == ["init", "--protocol"] and client.commands[-1][-2:] == ["--run-id", "nueva_1"]
+
+    for body in ({"protocol": "../.env", "label": "x", "run_id": "a"},
+                 {"protocol": "protocol_isabel_chapter_v2.yaml", "label": "x", "run_id": "../a"},
+                 {"protocol": "protocol_isabel_chapter_v2.yaml", "label": "x" * 200, "run_id": "a"},
+                 {"protocol": "protocol_isabel_chapter_v2.yaml", "label": "x", "run_id": "demo"}):
+        assert client.post("/api/v2/runs", json=body).status_code in (400, 409)
+    assert len([c for c in client.commands if "init" in c]) == 1
