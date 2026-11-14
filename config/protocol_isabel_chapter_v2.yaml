@@ -8,8 +8,8 @@
 version: 2
 status: approved         # see docs/DECISIONES_METODO.md, entry of 2026-11-13
 title: "Policies for job creation and destruction (JCD) linked to the EU twin transition"
-approved_by: "Ricardo Martínez de Vega"      # add Fernando Rubiera-Morollón once he has confirmed version 2
-approved_at: 2026-11-13
+approved_by: ["Ricardo Martínez de Vega", "Fernando Rubiera-Morollón"]   # RMV 2026-11-13; FRM 2026-11-14
+approved_at: 2026-11-14
 
 # Journals eligible under IC5. Checked in code by ISSN (journal title when a record has no ISSN).
 journal_lists:

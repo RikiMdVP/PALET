@@ -60,8 +60,13 @@ def prisma_counts(run: Run, protocol: Protocol) -> dict:
 
     sources = []
     for search in manifest["searches"]:
+        try:
+            source_type = protocol.source(search["query_id"]).type
+        except Exception:
+            source_type = None
         sources.append({
             "query_id": search["query_id"],
+            "type": source_type,
             "label": source_label(protocol, search["query_id"], search),
             "total_hits": search.get("total_hits"),
             "downloaded": search.get("downloaded"),
@@ -109,6 +114,26 @@ def prisma_counts(run: Run, protocol: Protocol) -> dict:
 
 # ── PRISMA flow diagram ─────────────────────────────────────────────────────
 
+def identification_lines(counts: dict) -> list[str]:
+    """Lines of the identification box: the total, then the sources grouped as database exports and
+    supplementary searches. No database is named in the figure; the methods appendix (section A) names
+    them, with their dates, strings and counts, and the caption of the figure can refer to it."""
+    def year_of(sources):
+        years = sorted({str(s.get("executed_at") or "")[:4] for s in sources if s.get("executed_at")})
+        return ", " + "–".join([years[0], years[-1]] if len(years) > 1 else years) if years else ""
+
+    exports = [s for s in counts["sources"] if s.get("type") == "manual_import"]
+    searches = [s for s in counts["sources"] if s.get("type") != "manual_import"]
+    lines = [f"Records identified (n = {counts['identified']})"]
+    if exports:
+        lines.append(f"Database export{'s' if len(exports) > 1 else ''}{year_of(exports)} "
+                     f"(n = {sum(s['downloaded'] or 0 for s in exports)})")
+    if searches:
+        lines.append(f"Supplementary search{'es' if len(searches) > 1 else ''}{year_of(searches)} "
+                     f"(n = {sum(s['downloaded'] or 0 for s in searches)})")
+    return lines
+
+
 def draw_prisma(counts: dict, path_without_extension) -> list[str]:
     figstyle.apply_style()
     palette = figstyle.PALETTE
@@ -141,9 +166,9 @@ def draw_prisma(counts: dict, path_without_extension) -> list[str]:
     left_x, left_w, right_x, right_w = 9, 46, 60, 39
 
     # Identification
-    source_lines = [f"{s['label']} (n = {s['downloaded']})" for s in counts["sources"]]
-    id_text = f"Records identified (n = {counts['identified']})\n" + "\n".join(source_lines)
-    id_h = 6 + 2.7 * len(source_lines)
+    id_lines = identification_lines(counts)
+    id_text = "\n".join(id_lines)
+    id_h = 6 + 2.7 * (len(id_lines) - 1)
     id_y = 97 - id_h
     box(left_x, id_y, left_w, id_h, id_text, palette["box_main"])
     removed = f"Records removed before screening\nDuplicates (n = {counts['duplicates_removed']})"
@@ -437,7 +462,8 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
     for s in counts["sources"]:
         out.append(f"| {s['label']} | {s['platform'] or ''} | {s['executed_at'] or ''} | "
                    f"{s['total_hits']} | {s['downloaded']}{' (truncated)' if s['truncated'] else ''} |")
-    out.append("")
+    out += ["", "The flow diagram groups these sources into database exports and supplementary searches "
+            "and names no database; refer to this table (or name the databases in a footnote) in its caption.", ""]
     for s in counts["sources"]:
         out.append(f"**{s['label']}**")
         if s["query_string"]:
@@ -499,9 +525,11 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
              "A record was included only when both models included it. Records that one model included and "
              "the other found unclear were decided by the authors. Records excluded by both models were "
              "excluded for the reason they shared. All other records (both models unsure, one excluding and "
-             "the other unsure, or one including and the other excluding) and records without an abstract "
-             "were excluded without human review; this rule is conservative and may have excluded "
-             "relevant studies."
+             "the other unsure, or one including and the other excluding) were excluded without human "
+             "review; this rule is conservative and may have excluded relevant studies. Only records for "
+             "which an abstract could be retrieved were eligible: "
+             f"{counts['exclusion_reasons'].get('NO_ABSTRACT', 0)} record(s) without an abstract were "
+             "excluded on that ground before any model was called."
              if protocol.decision_rule == "agreement_or_exclude" else
              "A decision was final only when both models reached it. Records on which the models disagreed, "
              "records either model found unclear, and records without an abstract were decided by the authors."), "",

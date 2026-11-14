@@ -78,3 +78,17 @@ Decisiones de Ricardo (pendiente de que Fernando confirme la versión 2 del prot
 - **Resultado**: 372 elegibles (358 por acuerdo de los dos cribadores, 14 por decisión de los autores sobre 53 pendientes) → **170 sintetizados**, 202 elegibles no sintetizados. Principales por pregunta: RQ1 40, RQ2 38, RQ3 5, RQ4 31, RQ5 4, RQ6 57, RQ7 7 (12 estudios lo son en dos preguntas).
 - **Descartado**: añadir a posteriori un criterio de "formula recomendaciones de política" para reducir el corpus. Sería afinar los criterios porque sobran estudios, y no es generalizable a otros usos de la herramienta.
 - **A declarar en el capítulo**: la revisión no es exhaustiva; la clasificación principal/parcial la hace un solo modelo a partir del resumen, sin segundo modelo ni revisión de los autores (definiciones en la entrada del 13-nov y en el apéndice de métodos). RQ3, RQ5 y RQ7 tienen pocos estudios principales (5, 4 y 7): se presenta como resultado sobre dónde escasea la evidencia, salvo que los autores decidan otra cosa.
+
+## 2026-11-14 (tarde) — Protocolo v2 aprobado por Fernando; resúmenes no recuperados; figura PRISMA
+
+- **Fernando aprueba el protocolo v2 completo** (comunicado por Ricardo). `approved_by` recoge a los dos autores;
+  `approved_at: 2026-11-14`. Queda cerrado el punto abierto del HANDOFF.
+- **Registros sin resumen (88)**: no se recuperan a mano. Se declara como condición de elegibilidad: solo se
+  consideraron los estudios cuyo resumen pudo recuperarse; los 88 sin resumen se excluyeron por ese motivo antes
+  de llamar a ningún modelo (el código ya lo hacía así con la regla `agreement_or_exclude`; cambia solo la
+  redacción del apéndice de métodos, que lo presentaba como parte de la regla de decisión).
+- **Figura PRISMA**: la caja de identificación agrupa las fuentes en "exportación de base de datos" y "búsquedas
+  suplementarias", sin nombrar OpenAlex ni Scopus; las bases, cadenas, fechas y recuentos van en la sección A del
+  apéndice de métodos y, en el capítulo, en el texto o en nota al pie. Objetivo: la figura más limpia posible.
+- **Síntesis por pregunta (Ricardo)**: no se fija un límite de palabras a priori por pregunta; cada una tiene el
+  espacio necesario para que se entienda qué dice cada estudio principal sobre ella.
