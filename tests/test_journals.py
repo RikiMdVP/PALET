@@ -129,4 +129,5 @@ def test_version_2_of_the_chapter_protocol():
     assert v2.research_questions == V1.research_questions
     new = [s for s in v2.sources if s.id not in {x.id for x in V1.sources}]
     assert {s.id for s in new} == {f"openalex_supplementary_{x}" for x in ("rq1", "rq1_b", "rq2", "rq2_b", "rq3", "rq6", "rq6_b", "rq7")}
-    assert all(s.model_extra["status"] == "proposed" and s.model_extra["languages"] == ["en"] for s in new)
+    # Each search carries its own status; the authors approve them one by one with approve-search.
+    assert all(s.model_extra["status"] in ("proposed", "approved") and s.model_extra["languages"] == ["en"] for s in new)
