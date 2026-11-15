@@ -67,14 +67,22 @@ The first version of this chapter was prepared with an earlier version of the to
 The reviewers asked for explicit criteria, a reproducible search, a flow diagram and a check of the selection.
 Meeting those requests produced a different corpus: the 2025 export was re-screened against the explicit criteria
 and seven supplementary searches were added. The present version is written on the resulting corpus. Figure 1
-shows the eight steps of the procedure; the following subsections describe each step, its inputs and its outputs.
+shows the eight steps of the procedure and the three points at which the authors decide; the following subsections
+describe each step, its inputs and its outputs. Compared with the first version, which described the tool's four
+design stages (question synthesis, string generation, search execution, matching), the figure now shows what was
+done in this review: the questions were fixed by the authors, the strings were drafted by the authors with AI
+assistance and approved after their counts were reviewed, and matching is replaced by criterion-by-criterion
+screening with verified quotations, a decision rule and adjudication.
 
 **Figure 1.** The PALET procedure as applied in this review.
 
 ![](figures/fig1_palet_workflow.png)
 
 *Source: own. Green: steps taken by the authors; grey: deterministic software; blue: steps performed by an AI model
-whose every answer is tied to a passage of the record that the software verifies.*
+whose every answer is tied to a passage of the record that the software verifies. Diamonds mark the points at which
+the authors decide: approval of the protocol before any search, and approval of each supplementary search after its
+count is reviewed (a string whose count is unreasonable is revised and re-run before approval). Adjudication (step 6)
+is the third decision point.*
 
 ## 2.2 Step 1 — Protocol
 
