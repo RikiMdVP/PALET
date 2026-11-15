@@ -97,8 +97,8 @@ const BOOK = [
 const ARM_UP_LEFT = ["KKK.", "KhK.", "KhK.", "KhhK", ".KhK", ".KKK"];
 const ARM_UP_RIGHT = [".KKK", ".KhK", ".KhK", "KhhK", "KhK.", "KKK."];
 const PILE_BOOK = ["KBBBBBnnK", "KKKKKKKKK"];
-const Z_SMALL = ["zzz", ".z.", "zzz"];
-const Z_BIG = ["zzzz", "..z.", ".z..", "zzzz"];
+const Z_SMALL = ["zzzz", "..z.", ".z..", "zzzz"];
+const Z_BIG = ["zzzzz", "...z.", "..z..", ".z...", "zzzzz"];
 const DOT = ["oo", "oo"];
 
 const robot = { mood: "awake", frame: 0, books: 0, readSince: null, lastActivity: Date.now(), busy: false };
@@ -152,8 +152,8 @@ function drawScene() {
     if (m === "sleep") {
         const step = robot.frame % 6;
         if (step >= 1) blit(grid, Z_SMALL, 33, 11);
-        if (step >= 3) blit(grid, Z_BIG, 37, 5);
-        if (step >= 5) blit(grid, Z_SMALL, 42, 1);
+        if (step >= 3) blit(grid, Z_BIG, 37, 4);
+        if (step >= 5) blit(grid, Z_SMALL, 42, 0);
     }
     if (m === "think") {
         const step = robot.frame % 4;
