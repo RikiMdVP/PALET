@@ -68,6 +68,7 @@ qsp_max_tokens = 8000
 map_max_tokens = 8000
 synthesis_max_tokens = 16000
 gaps_max_tokens = 16000
+protocol_max_tokens = 12000
 screen_max_tokens = 8000
 assign_max_tokens = 8000
 # Papers sent to the model per research question, and characters kept per abstract.
@@ -93,6 +94,10 @@ model = "claude-opus-5-5"
 [[screening.screeners]]
 name = "B"
 model = "claude-sonnet-5-5"
+
+[assistant]
+# Model of the protocol assistant (advice on research questions, draft criteria and searches).
+model = "claude-opus-5-5"
 
 [assignment]
 # Model that charts the included records (research questions addressed, contribution).

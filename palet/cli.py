@@ -25,7 +25,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from palet import adjudication, assign, citations, config, journals, llm, report, screening
+from palet import adjudication, assign, citations, config, drafting, journals, llm, report, screening
 from palet.dedup import deduplicate
 from palet.errors import PaletError
 from palet.importers import import_scopus_csv
@@ -539,6 +539,43 @@ def cmd_journals(args) -> int:
     return 0
 
 
+# ── protocol assistant ──────────────────────────────────────────────────────
+
+def cmd_draft_protocol(args) -> int:
+    """Draft a protocol from a context and research questions (advice first, then the draft)."""
+    context = Path(args.context).read_text(encoding="utf-8")
+    questions = drafting.clean_questions(Path(args.questions).read_text(encoding="utf-8").splitlines())
+    llm.reset_usage()
+    analysis = drafting.analyse_questions(context, questions)
+    print(f"Valoración general: {analysis.overall}\n")
+    for advice, original in zip(analysis.questions, questions):
+        print(f"{advice.id} [{advice.change}]\n  original:  {original}")
+        if advice.change != "none":
+            print(f"  sugerida:  {advice.suggested}\n  motivo:    {advice.rationale}")
+        for issue in advice.issues:
+            print(f"  - {issue}")
+    for gap in analysis.gaps:
+        print(f"Sin cubrir: {gap}")
+    if args.analyse_only:
+        return 0
+    final = [a.suggested for a in analysis.questions] if args.accept_suggestions else questions
+    draft = drafting.draft_protocol(context, final)
+    path = ROOT / "config" / f"{drafting.slug(args.name)}.yaml"
+    drafting.write_protocol(path, drafting.protocol_data(draft, final, questions), context)
+    cost = sum(phase["cost_usd"] for phase in llm.usage_summary().values())
+    print(f"\nProtocolo en borrador: {path}  (coste ≈ {cost:.2f} $)")
+    print("Revísalo y edítalo. Cuando los autores estén de acuerdo:\n"
+          f"  python -m palet approve-protocol --protocol {path.relative_to(ROOT)} --by \"<nombres>\"")
+    return 0
+
+
+def cmd_approve_protocol(args) -> int:
+    path = Path(args.protocol)
+    drafting.approve_protocol(path if path.is_absolute() else ROOT / path, args.by)
+    print(f"Protocolo {path.name} aprobado por {args.by} el {date.today().isoformat()}.")
+    return 0
+
+
 # ── status ──────────────────────────────────────────────────────────────────
 
 def cmd_status(args) -> int:
@@ -636,6 +673,19 @@ def main(argv=None) -> int:
     p = sub.add_parser("journals", help="which records are in the journal lists of the protocol")
     p.add_argument("--run", required=True)
     p.set_defaults(func=cmd_journals)
+
+    p = sub.add_parser("draft-protocol", help="advice on the research questions and a draft protocol")
+    p.add_argument("--context", required=True, help="text file: what the review is about")
+    p.add_argument("--questions", required=True, help="text file: one research question per line")
+    p.add_argument("--name", default="draft", help="name of the protocol file to write in config/")
+    p.add_argument("--analyse-only", action="store_true", help="only print the advice on the questions")
+    p.add_argument("--accept-suggestions", action="store_true", help="draft with the suggested wordings")
+    p.set_defaults(func=cmd_draft_protocol)
+
+    p = sub.add_parser("approve-protocol", help="mark a draft protocol as approved by the authors")
+    p.add_argument("--protocol", required=True)
+    p.add_argument("--by", required=True)
+    p.set_defaults(func=cmd_approve_protocol)
 
     p = sub.add_parser("status", help="show what has been done in a run")
     p.add_argument("--run", required=True)

@@ -198,3 +198,68 @@ def test_protocols_are_listed_and_a_review_can_be_started(client, tmp_path, monk
                  {"protocol": "protocol_isabel_chapter_v2.yaml", "label": "x", "run_id": "demo"}):
         assert client.post("/api/v2/runs", json=body).status_code in (400, 409)
     assert len([c for c in client.commands if "init" in c]) == 1
+
+
+def test_assistant_endpoints_from_questions_to_an_approved_protocol(client, tmp_path, monkeypatch):
+    from palet import drafting
+    from palet.protocol import load_protocol
+    import tests.test_drafting as sample
+
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    monkeypatch.setattr(webflow, "CONFIG_DIR", config_dir)
+    monkeypatch.setattr(drafting, "analyse_questions",
+                        lambda context, questions: drafting.QuestionAnalysis.model_validate(sample.ANALYSIS))
+    clean = json.loads(json.dumps(sample.DRAFT))
+    for search in clean["searches"]:
+        search["blocks"] = {name: drafting._clean_terms(terms) for name, terms in search["blocks"].items()}
+    monkeypatch.setattr(drafting, "draft_protocol",
+                        lambda context, questions: drafting.ProtocolDraft.model_validate(clean))
+
+    short = client.post("/api/v2/assistant/questions", json={"context": "too short", "questions": sample.QUESTIONS})
+    assert short.status_code == 400
+    none = client.post("/api/v2/assistant/questions", json={"context": sample.CONTEXT, "questions": []})
+    assert none.status_code == 400
+
+    advice = client.post("/api/v2/assistant/questions",
+                         json={"context": sample.CONTEXT, "questions": ["1. " + q for q in sample.QUESTIONS]})
+    assert advice.status_code == 200
+    assert advice.json()["questions"] == sample.QUESTIONS and len(advice.json()["analysis"]["questions"]) == 2
+
+    final = [sample.QUESTIONS[0], sample.ANALYSIS["questions"][1]["suggested"]]
+    body = {"context": sample.CONTEXT, "questions": final, "originals": sample.QUESTIONS, "name": "Tabaco escolar"}
+    made = client.post("/api/v2/assistant/protocol", json=body)
+    assert made.status_code == 200 and made.json()["file"] == "tabaco_escolar.yaml"
+    assert made.json()["searches"][0]["rq"] == "RQ1" and " AND " in made.json()["searches"][0]["query"]
+    protocol = load_protocol(config_dir / "tabaco_escolar.yaml")
+    assert protocol.status == "draft" and protocol.research_questions_original == {"RQ2": sample.QUESTIONS[1]}
+    assert client.post("/api/v2/assistant/protocol", json=body).status_code == 409           # never overwrites
+
+    approve = {"file": "tabaco_escolar.yaml", "by": "Ana Pérez"}
+    assert client.post("/api/v2/protocols/approve", json=approve).status_code == 400          # not confirmed
+    assert client.post("/api/v2/protocols/approve", json={**approve, "file": "../x.yaml", "confirm": True}).status_code == 400
+    assert load_protocol(config_dir / "tabaco_escolar.yaml").status == "draft"
+    assert client.post("/api/v2/protocols/approve", json={**approve, "confirm": True}).status_code == 200
+    assert load_protocol(config_dir / "tabaco_escolar.yaml").status == "approved"
+    assert client.post("/api/v2/protocols/approve", json={**approve, "confirm": True}).status_code == 400   # already approved
+
+
+def test_assistant_reports_model_failures_without_details(client, monkeypatch):
+    from palet import drafting
+    import tests.test_drafting as sample
+
+    def boom(context, questions):
+        raise RuntimeError("secret request body")
+
+    monkeypatch.setattr(drafting, "analyse_questions", boom)
+    failed = client.post("/api/v2/assistant/questions", json={"context": sample.CONTEXT, "questions": sample.QUESTIONS})
+    assert failed.status_code == 502 and "secret" not in failed.json()["error"]
+    assert webflow._assistant["busy"] is False
+
+
+def test_approving_a_search_needs_who_and_confirmation(client):
+    url = "/api/v2/runs/demo/approve-search"
+    assert client.post(url, json={"source": "openalex_rq1", "by": "RMV"}).status_code == 400
+    assert client.post(url, json={"source": "bad id!", "by": "RMV", "confirm": True}).status_code == 400
+    assert client.post(url, json={"source": "openalex_rq1", "by": "", "confirm": True}).status_code == 400
+    assert client.commands == []

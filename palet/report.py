@@ -96,8 +96,10 @@ def prisma_counts(run: Run, protocol: Protocol) -> dict:
         "screened": len(records),
         "screening_decisions_recorded": len(finals),
         "excluded": screening["exclude"],
-        "exclusion_reasons": {code: screening["exclusion_reasons"].get(code, 0)
-                              for code in REASON_ORDER if screening["exclusion_reasons"].get(code)},
+        # Known reasons in a fixed order, then any reason code defined by the protocol itself.
+        "exclusion_reasons": {code: screening["exclusion_reasons"][code]
+                              for code in [*REASON_ORDER, *sorted(set(screening["exclusion_reasons"]) - set(REASON_ORDER))]
+                              if screening["exclusion_reasons"].get(code)},
         "pending": screening["pending"],
         "included": screening["include"],
         "included_by_agreement": decided_by[("include", "agreement")],

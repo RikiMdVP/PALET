@@ -27,10 +27,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
-from palet import config
-from palet.errors import PaletConfigError
+from palet import config, drafting, llm
+from palet.errors import PaletConfigError, PaletError
 from palet.runs import ROOT
 
 router = APIRouter(prefix="/api/v2")
@@ -142,9 +143,12 @@ def _stages(protocol, manifest, records, screening, last_screen, assignments, re
     has_lists = bool(protocol and protocol.journal_lists)
     selection = (_read_json(path / "report" / "prisma_counts.json", {}) or {}).get("selection") or {}
 
+    # The protocol file is the truth; the manifest only remembers what it was at the last step.
+    status = protocol.status if protocol else (manifest.get("protocol") or {}).get("status")
+    version = protocol.version if protocol else (manifest.get("protocol") or {}).get("version")
     stages = [
-        {"id": "protocol", "label": "Protocolo", "done": bool((manifest.get("protocol") or {}).get("status") == "approved"),
-         "detail": f"v{(manifest.get('protocol') or {}).get('version')} · {(manifest.get('protocol') or {}).get('status')}"},
+        {"id": "protocol", "label": "Protocolo", "done": status == "approved",
+         "detail": f"v{version} · {'aprobado' if status == 'approved' else 'borrador: falta aprobarlo'}"},
         {"id": "search", "label": "Búsqueda", "done": bool(searches) and not waiting,
          "detail": f"{len(searches)} fuentes · {sum(s.get('downloaded') or 0 for s in searches)} registros"
                    + (f" · {len(waiting)} aprobadas sin descargar" if waiting else "")},
@@ -217,8 +221,12 @@ def run_overview(run_id: str) -> dict:
         "label": manifest.get("label"),
         "created_at": manifest.get("created_at"),
         "updated_at": manifest.get("updated_at"),
-        "protocol": {"version": protocol.get("version"), "status": protocol.get("status"),
-                     "approved_by": protocol.get("approved_by"), "file": Path(protocol.get("path") or "").name,
+        "protocol": {"version": review_protocol.version if review_protocol else protocol.get("version"),
+                     "status": review_protocol.status if review_protocol else protocol.get("status"),
+                     "approved_by": review_protocol.approved_by if review_protocol else protocol.get("approved_by"),
+                     "file": Path(protocol.get("path") or "").name,
+                     "criteria": [{"id": c.id, "kind": c.kind, "rule": c.rule}
+                                  for c in (review_protocol.criteria if review_protocol else [])],
                      "title": review_protocol.title if review_protocol else None,
                      "decision_rule": review_protocol.decision_rule if review_protocol else None,
                      "journal_lists": [j.id for j in review_protocol.journal_lists] if review_protocol else [],
@@ -422,6 +430,140 @@ async def api_create_run(request: Request):
     if code != 0:
         return JSONResponse({"error": output or "No se pudo crear la ejecución."}, status_code=400)
     return JSONResponse({"run_id": run_id, "output": output})
+
+
+# ── Protocol assistant ──────────────────────────────────────────────────────
+
+_assistant = {"busy": False}
+
+
+def _text(value, name: str, low: int, high: int) -> str:
+    if not isinstance(value, str) or not low <= len(value.strip()) <= high:
+        raise WorkflowError(f"{name}: entre {low} y {high} caracteres.")
+    return value.strip()
+
+
+def _question_list(value) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(q, str) and len(q) <= 800 for q in value):
+        raise WorkflowError("Las preguntas deben ser una lista de textos (máximo 800 caracteres cada una).")
+    try:
+        return drafting.clean_questions(value)
+    except PaletError as e:
+        raise WorkflowError(str(e))
+
+
+async def _assistant_call(function, *args):
+    """Run one assistant call outside the event loop; one at a time. Returns (result, cost in USD)."""
+    with _lock:
+        if _assistant["busy"]:
+            raise WorkflowError("El asistente ya está trabajando. Espera a que termine.", status=409)
+        _assistant["busy"] = True
+    try:
+        llm.reset_usage()
+        result = await run_in_threadpool(function, *args)
+        cost = sum(phase["cost_usd"] for phase in llm.usage_summary().values())
+        return result, round(cost, 3)
+    except (PaletError, PaletConfigError) as e:
+        raise WorkflowError(str(e))
+    except Exception as e:                       # API errors: report the kind, never the request
+        raise WorkflowError(f"La llamada al modelo falló ({type(e).__name__}).", status=502)
+    finally:
+        with _lock:
+            _assistant["busy"] = False
+
+
+@router.post("/assistant/questions")
+async def api_assistant_questions(request: Request):
+    """Advice on the wording of the research questions. Nothing is saved."""
+    body = await request.json()
+    try:
+        context = _text(body.get("context"), "Contexto de la revisión", 40, 6000)
+        questions = _question_list(body.get("questions"))
+        analysis, cost = await _assistant_call(drafting.analyse_questions, context, questions)
+    except WorkflowError as e:
+        return _error(e)
+    return JSONResponse({"questions": questions, "analysis": analysis.model_dump(), "cost_usd": cost})
+
+
+@router.post("/assistant/protocol")
+async def api_assistant_protocol(request: Request):
+    """Draft criteria and searches for the questions fixed by the authors; write config/<name>.yaml as a draft."""
+    body = await request.json()
+    try:
+        context = _text(body.get("context"), "Contexto de la revisión", 40, 6000)
+        questions = _question_list(body.get("questions"))
+        originals = body.get("originals") or questions
+        if not isinstance(originals, list) or len(originals) != len(questions) \
+                or not all(isinstance(o, str) and len(o) <= 800 for o in originals):
+            raise WorkflowError("La lista de preguntas originales no coincide con la de preguntas.")
+        try:
+            name = drafting.slug(_text(body.get("name"), "Nombre del protocolo", 2, 60))
+        except PaletError as e:
+            raise WorkflowError(str(e))
+        path = CONFIG_DIR / f"{name}.yaml"
+        if path.exists():
+            raise WorkflowError(f"Ya existe un protocolo llamado {path.name}. Elige otro nombre.", status=409)
+        draft, cost = await _assistant_call(drafting.draft_protocol, context, questions)
+        try:
+            drafting.write_protocol(path, drafting.protocol_data(draft, questions, [" ".join(o.split()) for o in originals]),
+                                    context)
+        except (PaletError, PaletConfigError) as e:
+            raise WorkflowError(str(e))
+    except WorkflowError as e:
+        return _error(e)
+    from palet.search import build_query
+    return JSONResponse({
+        "file": path.name, "title": draft.title, "year_from": draft.year_from, "year_to": draft.year_to,
+        "criteria": [c.model_dump() for c in draft.criteria], "notes": draft.notes, "cost_usd": cost,
+        "searches": [{"rq": s.rq, "query": build_query(s.blocks)} for s in draft.searches]})
+
+
+@router.post("/protocols/approve")
+async def api_approve_protocol(request: Request):
+    """The authors approve a draft protocol. A deliberate act: needs who approves and an explicit confirmation."""
+    body = await request.json()
+    try:
+        file = body.get("file")
+        if not isinstance(file, str) or file not in {p.name for p in CONFIG_DIR.glob("*.yaml")}:
+            raise WorkflowError("Elige un protocolo de la carpeta config/.")
+        by = _text(body.get("by"), "Quién aprueba", 2, 120)
+        if body.get("confirm") is not True:
+            raise WorkflowError("Falta confirmar que los autores han revisado preguntas, criterios y búsquedas.")
+        try:
+            drafting.approve_protocol(CONFIG_DIR / file, by)
+        except (PaletError, PaletConfigError) as e:
+            raise WorkflowError(str(e))
+    except WorkflowError as e:
+        return _error(e)
+    return JSONResponse({"file": file, "status": "approved", "approved_by": by})
+
+
+@router.post("/runs/{run_id}/approve-search")
+async def api_approve_search(run_id: str, request: Request):
+    """The authors approve one search string of the protocol of this run."""
+    body = await request.json()
+    try:
+        path = run_path(run_id)
+        source = body.get("source")
+        if not isinstance(source, str) or not _SOURCE_ID.match(source):
+            raise WorkflowError("Indica una fuente del protocolo.")
+        by = _text(body.get("by"), "Quién aprueba", 2, 120)
+        if '"' in by or "\\" in by:
+            raise WorkflowError("Quién aprueba: sin comillas ni barras.")
+        if body.get("confirm") is not True:
+            raise WorkflowError("Falta confirmar que los autores dan por buena esta cadena.")
+        stored = Path((_read_json(path / "manifest.json", {}).get("protocol") or {}).get("path") or "")
+        protocol_file = next((c for c in (stored if stored.is_absolute() else ROOT / stored, CONFIG_DIR / stored.name)
+                              if c.is_file()), None)
+        if protocol_file is None:
+            raise WorkflowError("No encuentro el fichero del protocolo de esta ejecución.")
+        code, output = _run_and_capture([sys.executable, "-m", "palet", "approve-search", "--protocol",
+                                         str(protocol_file), "--source", source, "--by", by])
+    except WorkflowError as e:
+        return _error(e)
+    if code != 0:
+        return JSONResponse({"error": output or "No se pudo aprobar la búsqueda."}, status_code=400)
+    return JSONResponse({"output": output})
 
 
 @router.get("/screeners")

@@ -139,6 +139,14 @@ def make_screeners(models: list[str]) -> list[dict]:
     return [{"name": name, "model": model} for name, model in zip("AB", models)]
 
 
+def get_assistant_model() -> str:
+    """Model of the protocol assistant."""
+    model = load_config().get("assistant", {}).get("model") or get_default_model()
+    if model not in load_config()["pricing"].get("models", {}):
+        raise PaletConfigError(f"The assistant model is not in the catalogue: {model}")
+    return model
+
+
 def get_assignment_model() -> str:
     """Model that charts included records."""
     model = load_config().get("assignment", {}).get("model") or get_default_model()
