@@ -76,13 +76,16 @@ screening with verified quotations, a decision rule and adjudication.
 
 **Figure 1.** The PALET procedure as applied in this review.
 
-![](figures/fig1_palet_workflow.png)
+![](figures/fig1_palet_workflow_v2.png)
 
-*Source: own. Green: steps taken by the authors; grey: deterministic software; blue: steps performed by an AI model
-whose every answer is tied to a passage of the record that the software verifies. Diamonds mark the points at which
-the authors decide: approval of the protocol before any search, and approval of each supplementary search after its
-count is reviewed (a string whose count is unreasonable is revised and re-run before approval). Adjudication (step 6)
-is the third decision point.*
+*Source: own. Green blocks are the four phases of the tool; white boxes are their outputs and light-green boxes the
+two steps performed by an AI model, whose every answer is tied to a passage of the record that the software verifies.
+Solid arrows are interactions between the authors and the tool; dash-dot arrows are deterministic flows within the
+tool; dotted grey arrows are the infrequent revision loop. Diamonds mark the three points at which the authors decide:
+approval of the protocol before any search, approval of each supplementary search after its count is reviewed (a
+string whose count is unreasonable is revised and re-run), and adjudication of the records on which the two models
+did not agree. Editable version: `figures/fig1_palet_workflow_v2.pptx`; an alternative rendering of the same eight
+steps is `figures/fig1_palet_workflow.png`.*
 
 ## 2.2 Step 1 — Protocol
 
