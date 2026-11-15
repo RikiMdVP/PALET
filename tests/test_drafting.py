@@ -132,3 +132,11 @@ def test_slug():
     assert drafting.slug("Tabaco y Adolescentes — 2026") == "tabaco_y_adolescentes_2026"
     with pytest.raises(PaletError):
         drafting.slug("¿?")
+
+
+def test_the_assistant_model_can_be_chosen(model):
+    model.replies.append(json.dumps(ANALYSIS))
+    drafting.analyse_questions(CONTEXT, QUESTIONS, model="claude-sonnet-5-5")
+    assert model.seen[0]["model"] == "claude-sonnet-5-5"
+    with pytest.raises(Exception, match="catalogue"):
+        drafting.analyse_questions(CONTEXT, QUESTIONS, model="not-a-model")

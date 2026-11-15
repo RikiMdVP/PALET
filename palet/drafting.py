@@ -100,10 +100,12 @@ def _user_message(context: str, questions: list[str]) -> str:
     return f"<context>\n{context.strip()}\n</context>\n\n<research_questions>\n{lines}\n</research_questions>"
 
 
-def _ask(prompt_file: str, user: str, parse):
+def _ask(prompt_file: str, user: str, parse, model: Optional[str] = None):
     """Call the assistant model and parse its JSON reply; one retry on an unusable reply."""
     system = (PROMPTS / prompt_file).read_text(encoding="utf-8")
-    model = config.get_assistant_model()
+    model = model or config.get_assistant_model()
+    if model not in {m["id"] for m in config.list_models()}:
+        raise PaletConfigError(f"Model not in the catalogue of palet.toml: {model}")
     last_error = ""
     for attempt in range(MAX_ATTEMPTS):
         response = llm.complete("protocol_assistant", "protocol_max_tokens", system=system, user=user,
@@ -118,7 +120,7 @@ def _ask(prompt_file: str, user: str, parse):
     raise PaletError(f"The model did not return a usable reply ({last_error[:200]})")
 
 
-def analyse_questions(context: str, questions: list[str]) -> QuestionAnalysis:
+def analyse_questions(context: str, questions: list[str], model: Optional[str] = None) -> QuestionAnalysis:
     """Advice on the wording of each research question. ``questions`` must already be clean."""
     expected = [f"RQ{i}" for i in range(1, len(questions) + 1)]
 
@@ -131,10 +133,10 @@ def analyse_questions(context: str, questions: list[str]) -> QuestionAnalysis:
                 advice.suggested = original          # "unchanged" must mean exactly that
         return analysis
 
-    return _ask("questions_system_v1.txt", _user_message(context, questions), parse)
+    return _ask("questions_system_v1.txt", _user_message(context, questions), parse, model)
 
 
-def draft_protocol(context: str, questions: list[str]) -> ProtocolDraft:
+def draft_protocol(context: str, questions: list[str], model: Optional[str] = None) -> ProtocolDraft:
     """Proposed criteria and one search per question, for questions the authors have fixed."""
     expected = [f"RQ{i}" for i in range(1, len(questions) + 1)]
 
@@ -161,7 +163,7 @@ def draft_protocol(context: str, questions: list[str]) -> ProtocolDraft:
                     raise ValueError(f"{search.rq}: block '{name}' has no usable term")
         return draft
 
-    return _ask("protocol_draft_system_v1.txt", _user_message(context, questions), parse)
+    return _ask("protocol_draft_system_v1.txt", _user_message(context, questions), parse, model)
 
 
 def _clean_terms(terms: list) -> list[str]:

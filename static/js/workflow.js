@@ -12,126 +12,257 @@ let lastJobKey = null;      // step + started_at of the job whose end we have al
 let jobWasRunning = false;
 
 // ── The robot ────────────────────────────────────────────────────────
-// A 24x24 pixel figure drawn from text rows: head (with a face that changes), body (with a pose that
-// changes) and feet. Letters are colours. Original design; no image files.
+// PALET is drawn on a 46x30 pixel scene from text sprites (letters are colours): chunky, dark-outlined,
+// lit from the top-left. Original design; no image files. What it does depends on what the tool is doing:
+//   sleep  nothing is happening (Zzz; click to wake)      think  short jobs: sits on a chair
+//   read   screening: one book every 10 s, piled up        write  assistant, charting, report: notepad
+//   cheer  a step ended well (cheeks, arms up)             awake / ask / error  talking to the user
+
+const SCENE_W = 46, SCENE_H = 30, FLOOR_Y = 27, RX = 14, RY = 2;
+const PAL = {
+    K: "#1a2026", T: "#eef2f5", b: "#cfd6dd", s: "#8f9aa6", h: "#aab4be", f: "#6b7682", v: "#1d2a33", E: "#7ee0a1",
+    w: "#ffffff", M: "#7ee0a1", a: "#7ee0a1", c: "#7ee0a1", k: "#f59fb0", C: "#b07a45", D: "#7d5430", n: "#f4f1e4",
+    l: "#9aa8a0", p: "#f2c14e", t: "#3a2a1a", e: "#f59fb0", B: "#c8553d", z: "#9fd8ff", o: "#d5dfd8",
+};
+const BOOK_COLOURS = ["#c8553d", "#3d7fc8", "#d9a441", "#5fae6b", "#8a5fc8", "#c85f9e"];
+const LIGHT = { sleep: "#2f5a41", awake: "#7ee0a1", cheer: "#7ee0a1", ask: "#f2c14e", error: "#ff7b72", think: "#f2c14e", read: "#f2c14e", write: "#f2c14e" };
 
 const HEAD_TOP = [
-    "...........aa...........",
-    "...........aa...........",
-    "...........oo...........",
-    "....oooooooooooooooo....",
-    "...obbbbbbbbbbbbbbbbo...",
-    "..obbvvvvvvvvvvvvvvbbo..",
+    ".......KaaK.......",
+    ".......KaaK.......",
+    "........KK........",
+    "..KKKKKKKKKKKKKK..",
+    ".KTTTTTTTTTTTTTsK.",
+    ".KbbbbbbbbbbbbbsK.",
+    ".KbvvvvvvvvvvvbsK.",
 ];
-const FACE_FRAME = [["..obv", "vbo.."], [".sobv", "vbos."], [".sobv", "vbos."], ["..obv", "vbo.."], ["..obv", "vbo.."]];
 const HEAD_BOTTOM = [
-    "..obbvvvvvvvvvvvvvvbbo..",
-    "...obbbbbbbbbbbbbbbbo...",
-    "....oooooooooooooooo....",
+    ".KbvvvvvvvvvvvbsK.",
+    ".KbbbbbbbbbbbbbsK.",
+    "..KKKKKKKKKKKKKK..",
 ];
-const SMILE = ["vkkvvMvvMvvkkv", "vvvvvvMMvvvvvv"];
-const FLAT = ["vkkvvvvvvvvkkv", "vvvvvMMMMvvvvv"];
 const FACES = {
-    idle: ["vvEEEvvvvEEEvv", "vvEwEvvvvEwEvv", "vvEEEvvvvEEEvv", ...SMILE],
-    blink: ["vvvvvvvvvvvvvv", "vvEEEvvvvEEEvv", "vvvvvvvvvvvvvv", ...SMILE],
-    happy: ["vvvEvvvvvvEvvv", "vvEvEvvvvEvEvv", "vvvvvvvvvvvvvv", "vkkvMvvvvMvkkv", "vvvvvMMMMvvvvv"],
-    ask: ["vvEEEvvvvEEEvv", "vvEwEvvvvEwEvv", "vvEEEvvvvEEEvv", "vkkvvvMMvvvkkv", "vvvvvvMMvvvvvv"],
-    error: ["vvEvEvvvvEvEvv", "vvvEvvvvvvEvvv", "vvEvEvvvvEvEvv", "vvvvvvMMvvvvvv", "vvvvvMvvMvvvvv"],
-    workA: ["vvEEEvvvvEEEvv", "vvwEEvvvvwEEvv", "vvEEEvvvvEEEvv", ...FLAT],
-    workB: ["vvEEEvvvvEEEvv", "vvEEwvvvvEEwvv", "vvEEEvvvvEEEvv", ...FLAT],
-    write: ["vvvvvvvvvvvvvv", "vvEEEvvvvEEEvv", "vvEwEvvvvEwEvv", "vkkvvvvvvvvkkv", "vvvvvvMMkvvvvv"],
+    awake: ["vEEvvvEEv", "vEwvvvEwv", "vvvMMMvvv"],
+    blink: ["vvvvvvvvv", "vEEvvvEEv", "vvvMMMvvv"],
+    sleep: ["vvvvvvvvv", "vEEvvvEEv", "vvvvMvvvv"],
+    cheer: ["vEEvvvEEv", "kkvvvvvkk", "vvMMMMMvv"],
+    ask: ["vEEvvvEEv", "vEwvvvEwv", "vvvvMvvvv"],
+    error: ["vEEvvvEEv", "vvvvvvvvv", "vvMMMMMvv"],
+    think: ["vvEwvvvEw", "vvEEvvvEE", "vvvMMvvvv"],
+    read: ["vvvvvvvvv", "vEEvvvEEv", "vEwvvvEwv"],
+    write: ["vvvvvvvvv", "vEEvvvEEv", "vEwvMvEwv"],
 };
-const FEET = ["........ff....ff........", ".......fff....fff.......", "........................", "........................"];
-const POSES = {
-    stand: [
-        ".......obbbbbbbbo.......",
-        "....hhobbbccccbbbohh....",
-        "...hh.obbbbbbbbbbo.hh...",
-        "...hh.obbsbbbbsbbo.hh...",
-        "......obbbbbbbbbbo......",
-        ".......oooooooooo.......",
-    ],
-    cheer: [
-        "...hh..obbbbbbbbo..hh...",
-        "....hhobbbccccbbbohh....",
-        "......obbbbbbbbbbo......",
-        "......obbsbbbbsbbo......",
-        "......obbbbbbbbbbo......",
-        ".......oooooooooo.......",
-    ],
-    // holding a notepad (n paper, l written lines, r binding) and a pencil (p, tip t)
-    writeA: [
-        ".......obbbbbbbbo.......",
-        "....hhobbbbbbbbbbohh....",
-        "...hhrrrrrrrrrrbbo......",
-        "...hhnllnllllntpppkhh...",
-        "....hnlllnllnnnbbo......",
-        "....hnnnnnnnnnnoo.......",
-    ],
-    writeB: [
-        ".......obbbbbbbbo.......",
-        "....hhobbbbbbbbbbohh....",
-        "...hhrrrrrrrrrrbbo......",
-        "...hhnllnllllnnbbo......",
-        "....hnlllnlllltpppkhh...",
-        "....hnnnnnnnnnnoo.......",
-    ],
-};
-const ROBOT_COLOURS = {
-    o: "#4d5b54", b: "#dfe7e2", s: "#b4c0b9", v: "#0f1d17", E: "#7ee0a1", w: "#f4fff8", M: "#7ee0a1", k: "#f59fb0",
-    h: "#b4c0b9", f: "#4d5b54", c: "#7ee0a1", a: "#7ee0a1", n: "#f4f1e4", l: "#8d9a93", r: "#4d5b54", p: "#f2c14e", t: "#3a2a1a",
-};
-const MOOD_LIGHT = { idle: "#7ee0a1", happy: "#7ee0a1", ask: "#f2c14e", error: "#ff7b72", working: "#f2c14e", writing: "#f2c14e" };
+const BODY_ARMS = [
+    "......KKKKKK......",
+    "...KKKKKKKKKKKK...",
+    ".KhhKbbccccbbsKhhK",
+    ".KhhKbbbbbbbbsKhhK",
+    ".KhhKbbbbbbbbsKhhK",
+    ".KKKKbbbbbbbbsKKKK",
+    "....KbbbbbbbbsK...",
+    "....KKKKKKKKKKK...",
+];
+const BODY_NO_ARMS = [
+    "......KKKKKK......",
+    "...KKKKKKKKKKKK...",
+    "....KbbccccbbsK...",
+    "....KbbbbbbbbsK...",
+    "....KbbbbbbbbsK...",
+    "....KbbbbbbbbsK...",
+    "....KbbbbbbbbsK...",
+    "....KKKKKKKKKKK...",
+];
+const LEGS_STAND = [".....KffK.KffK....", ".....KffK.KffK....", "....KfffK.KfffK...", "....KKKKK.KKKKK..."];
+const LEGS_SIT = [".....KffK.KffK....", "....KfffK.KfffK...", "....KKKKK.KKKKK..."];
+const CHAIR = [
+    "KKKKKKKKKKKKKKKKKKKK",
+    "KCCCCCCCCCCCCCCCCCCK",
+    "KCDDDDDDDDDDDDDDDDCK",
+    "KCK..............KCK", "KCK..............KCK", "KCK..............KCK",
+    "KCK..............KCK", "KCK..............KCK", "KCK..............KCK",
+    "KCKKKKKKKKKKKKKKKKCK",
+    "KCCCCCCCCCCCCCCCCCCK",
+    "KKKKKKKKKKKKKKKKKKKK",
+    "KCK..............KCK",
+    "KKK..............KKK",
+];
+const PAD = [
+    ["hKKKKKKKKKK...", "hKnnnnnnnnK...", "hKnllnlltpppeh", "hKnlllnnnnK...", ".KnnnnnnnnK...", ".KKKKKKKKKK..."],
+    ["hKKKKKKKKKK...", "hKnnnnnnnnK...", "hKnllnllnnK...", "hKnlllnltpppeh", ".KnnnnnnnnK...", ".KKKKKKKKKK..."],
+];
+const BOOK = [
+    ["hKKKKKKKKKKKKh", "hKnnnnnKnnnnKh", "hKnllnnKnllnKh", "hKnnnnnKnnnnKh", ".KBBBBBKBBBBK."],
+    ["hKKKKKKKKKKKKh", "hKnnnnnKnnnnKh", "hKnnllnKnnllKh", "hKnllnnKnllnKh", ".KBBBBBKBBBBK."],
+];
+const ARM_UP_LEFT = ["KKK.", "KhK.", "KhK.", "KhhK", ".KhK", ".KKK"];
+const ARM_UP_RIGHT = [".KKK", ".KhK", ".KhK", "KhhK", "KhK.", "KKK."];
+const PILE_BOOK = ["KBBBBBnnK", "KKKKKKKKK"];
+const Z_SMALL = ["zzz", ".z.", "zzz"];
+const Z_BIG = ["zzzz", "..z.", ".z..", "zzzz"];
+const DOT = ["oo", "oo"];
 
-let mood = "idle";
-let robotFrame = 0;
+const robot = { mood: "awake", frame: 0, books: 0, readSince: null, lastActivity: Date.now(), busy: false };
+let mood = "awake";       // kept in step with robot.mood (older code reads it)
 
-function drawRobot(face, pose) {
-    const svg = $("robot");
-    const rows = [...HEAD_TOP, ...FACES[face].map((inner, i) => FACE_FRAME[i][0] + inner + FACE_FRAME[i][1]),
-        ...HEAD_BOTTOM, ...POSES[pose], ...FEET];
-    const light = MOOD_LIGHT[mood] || MOOD_LIGHT.idle;
-    const busy = mood === "working" || mood === "writing";
-    const parts = [];
-    rows.forEach((row, y) => {
-        [...row].forEach((cell, x) => {
-            if (cell === ".") return;
-            let colour = ROBOT_COLOURS[cell];
-            if (cell === "a" || cell === "c") colour = (busy && robotFrame % 2) ? "#23302a" : light;
-            if ((cell === "E" || cell === "M") && mood === "error") colour = "#ff7b72";
-            parts.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${colour}"/>`);
+function blit(grid, sprite, x, y, swap) {
+    sprite.forEach((row, dy) => {
+        [...row].forEach((cell, dx) => {
+            if (cell === "." || y + dy < 0 || y + dy >= SCENE_H || x + dx < 0 || x + dx >= SCENE_W) return;
+            grid[y + dy][x + dx] = (swap && swap[cell]) || PAL[cell];
         });
     });
-    svg.innerHTML = parts.join("");       // built only from the constants above
-    svg.dataset.mood = mood;
 }
 
-function drawMood() {
-    const odd = robotFrame % 2;
-    if (mood === "working") drawRobot(odd ? "workB" : "workA", "stand");
-    else if (mood === "writing") drawRobot("write", odd ? "writeB" : "writeA");
-    else if (mood === "happy") drawRobot("happy", "cheer");
-    else drawRobot(mood, "stand");
+function drawScene() {
+    const m = robot.mood;
+    const odd = robot.frame % 2;
+    const grid = Array.from({ length: SCENE_H }, () => new Array(SCENE_W).fill(null));
+    for (let x = 0; x < SCENE_W; x += 1) {           // the floor it stands on
+        grid[FLOOR_Y][x] = "#2a3832";
+        grid[FLOOR_Y + 1][x] = "#18211d";
+        grid[FLOOR_Y + 2][x] = "#18211d";
+    }
+    const working = m === "think" || m === "read" || m === "write";
+    const light = working && odd ? "#23302a" : LIGHT[m];
+    const swap = { a: light, c: light };
+    if (m === "error") { swap.E = "#ff7b72"; swap.M = "#ff7b72"; }
+
+    // the pile of books already read: right of the robot first, then left
+    for (let i = 0; i < Math.min(robot.books, 20); i += 1) {
+        const x = i < 10 ? 34 : 2;
+        blit(grid, PILE_BOOK, x + (i % 2), FLOOR_Y - 2 * ((i % 10) + 1), { B: BOOK_COLOURS[i % BOOK_COLOURS.length] });
+    }
+
+    const sit = m === "think";
+    const y = RY + (sit ? 1 : 0);
+    if (sit) blit(grid, CHAIR, RX - 1, 13);
+    let face = m;
+    if (m === "awake" && robot.blink) face = "blink";
+    const head = [...HEAD_TOP, ...FACES[face].map((inner) => ".Kbv" + inner + "vbsK."), ...HEAD_BOTTOM];
+    const holding = m === "read" || m === "write" || m === "cheer";
+    blit(grid, holding ? BODY_NO_ARMS : BODY_ARMS, RX, y + 13, swap);
+    blit(grid, sit ? LEGS_SIT : LEGS_STAND, RX, y + 21);
+    blit(grid, head, RX, y, swap);
+    if (m === "write") blit(grid, PAD[odd], RX + 2, y + 15);
+    if (m === "read") blit(grid, BOOK[Math.floor(robot.frame / 3) % 2], RX + 2, y + 15, { B: BOOK_COLOURS[robot.books % BOOK_COLOURS.length] });
+    if (m === "cheer") {
+        blit(grid, ARM_UP_LEFT, RX, y + 10);
+        blit(grid, ARM_UP_RIGHT, RX + 14, y + 10);
+    }
+    if (m === "sleep") {
+        const step = robot.frame % 6;
+        if (step >= 1) blit(grid, Z_SMALL, 33, 11);
+        if (step >= 3) blit(grid, Z_BIG, 37, 5);
+        if (step >= 5) blit(grid, Z_SMALL, 42, 1);
+    }
+    if (m === "think") {
+        const step = robot.frame % 4;
+        if (step >= 1) blit(grid, DOT, 33, 8);
+        if (step >= 2) blit(grid, DOT, 36, 5);
+        if (step >= 3) blit(grid, DOT, 39, 2);
+    }
+
+    const parts = [];
+    grid.forEach((row, yy) => {
+        let x = 0;
+        while (x < SCENE_W) {                          // one rect per run of equal pixels
+            const colour = row[x];
+            let end = x + 1;
+            while (end < SCENE_W && row[end] === colour) end += 1;
+            if (colour) parts.push(`<rect x="${x}" y="${yy}" width="${end - x}" height="1" fill="${colour}"/>`);
+            x = end;
+        }
+    });
+    if (robot.books > 20) parts.push(`<text x="45" y="3.2" text-anchor="end" font-size="3" fill="#7b8a82" font-family="monospace">${robot.books} libros</text>`);
+    const svg = $("robot");
+    const sparks = svg.querySelector("#sparks");
+    svg.innerHTML = parts.join("");                    // built only from the constants above and a number
+    if (sparks) svg.appendChild(sparks);
+    svg.dataset.mood = m;
 }
+
+const MOOD_ALIAS = { idle: "awake", happy: "cheer", working: "think", writing: "write" };
 
 function setMood(next) {
+    next = MOOD_ALIAS[next] || next;
+    if (next === "read" && robot.mood !== "read") {
+        robot.books = 0;
+        if (!robot.readSince) robot.readSince = Date.now();
+    }
+    if (next !== "read") robot.readSince = null;
+    if ((next === "think" || next === "write") && robot.mood !== next && !robot.keepPile) robot.books = 0;
+    robot.mood = next;
     mood = next;
-    drawMood();
+    robot.lastActivity = Date.now();
+    drawScene();
 }
 
 setInterval(() => {
-    robotFrame += 1;
-    if (mood === "working" || mood === "writing") {
-        drawMood();
-    } else if (mood === "idle" && !reducedMotion && robotFrame % 7 === 0) {
-        drawRobot("blink", "stand");
-        setTimeout(() => { if (mood === "idle") drawMood(); }, 160);
+    robot.frame += 1;
+    const m = robot.mood;
+    if (m === "read" && robot.readSince) {              // one book every 10 seconds; the finished ones pile up
+        robot.books = Math.floor((Date.now() - robot.readSince) / 10000);
     }
+    const quiet = Date.now() - robot.lastActivity;
+    if (!robot.busy) {
+        if (m === "cheer" && quiet > 5000) { robot.mood = mood = "awake"; robot.lastActivity = Date.now(); }
+        else if ((m === "awake" || m === "ask" || m === "error") && quiet > 30000) robot.mood = mood = "sleep";
+    }
+    robot.blink = robot.mood === "awake" && !reducedMotion && robot.frame % 8 === 0;
+    drawScene();
 }, 450);
+
+const WAKE_LINES = ["¿Eh? Estaba repasando la bibliografía. Con los ojos cerrados.", "Despierto. ¿Qué cribamos?",
+    "Un momento… ya. Dime.", "No dormía: procesaba en segundo plano."];
+const POKE_LINES = ["Estoy despierto, estoy despierto.", "Si me pinchas no cribo más rápido.", "Dime qué paso quieres ver y te lo cuento."];
+
+function pokeRobot() {
+    if (robot.busy) return;
+    const lines = robot.mood === "sleep" ? WAKE_LINES : POKE_LINES;
+    say(lines[Math.floor(Math.random() * lines.length)], "awake");
+}
+
+function fireworks() {
+    if (reducedMotion) return;
+    const svg = $("robot");
+    const ns = "http://www.w3.org/2000/svg";
+    let layer = svg.querySelector("#sparks");
+    if (!layer) {
+        layer = document.createElementNS(ns, "g");
+        layer.id = "sparks";
+        svg.appendChild(layer);
+    }
+    const bursts = [[8, 7, 0, "#f2c14e"], [38, 6, 450, "#7ee0a1"], [23, 2, 900, "#ff7b72"]];
+    for (const [cx, cy, delay, colour] of bursts) {
+        setTimeout(() => {
+            const sparks = Array.from({ length: 18 }, (_, i) => {
+                const rect = document.createElementNS(ns, "rect");
+                rect.setAttribute("width", "1");
+                rect.setAttribute("height", "1");
+                rect.setAttribute("fill", i % 3 ? colour : "#ffffff");
+                layer.appendChild(rect);
+                const angle = (Math.PI * 2 * i) / 18;
+                return { rect, dx: Math.cos(angle), dy: Math.sin(angle), speed: 5 + (i % 3) * 2 };
+            });
+            const start = performance.now();
+            const animate = (now) => {
+                const t = (now - start) / 1100;
+                for (const spark of sparks) {
+                    spark.rect.setAttribute("x", String(Math.round(cx + spark.dx * spark.speed * t)));
+                    spark.rect.setAttribute("y", String(Math.round(cy + spark.dy * spark.speed * t + 3 * t * t)));
+                    spark.rect.setAttribute("opacity", String(Math.max(0, 1 - t)));
+                }
+                if (t < 1) requestAnimationFrame(animate); else sparks.forEach((spark) => spark.rect.remove());
+            };
+            requestAnimationFrame(animate);
+        }, delay);
+    }
+}
 
 let typing = null;
 function say(text, nextMood) {
     if (nextMood) setMood(nextMood);
+    robot.lastActivity = Date.now();
     const target = $("say");
     clearInterval(typing);
     if (reducedMotion) { target.textContent = text; return; }
@@ -165,9 +296,11 @@ const STAGES = {
 };
 const START_LINES = {
     search: "Voy a OpenAlex. Vuelvo enseguida.", dedup: "Buscando gemelos…", reparse: "Releyendo los datos en bruto. No descargo nada.",
-    journals: "Cotejando ISSN, uno por uno.", screen: "Cribando. Va para rato: puedes dejarme solo, lo guardo todo según llega.",
+    journals: "Cotejando ISSN, uno por uno.", screen: "A leer resúmenes. Va para rato: un libro tras otro, y lo guardo todo según llega.",
     adjudicate: "Recibido. Reviso que no falte ninguna fila.", assign: "Leyendo resúmenes y anotando citas.", report: "Montando el informe.",
 };
+const STEP_MOOD = { search: "think", dedup: "think", reparse: "think", journals: "think", adjudicate: "think",
+    screen: "read", assign: "write", report: "write" };
 const DONE_LINES = {
     search: "Hecho. Mira la salida: ahí está el recuento.", dedup: "Listo. Sin duplicados a la vista.", reparse: "Fuentes releídas.",
     journals: "Revistas comprobadas. El detalle está en journal_check.csv.", screen: "Cribado terminado. Lo que no decidí yo os espera en el Excel.",
@@ -306,7 +439,7 @@ function selectStage(stageId, talk) {
     selectedStage = stageId;
     document.querySelectorAll(".node").forEach((node) => node.classList.toggle("selected", node.dataset.stage === stageId));
     renderStage();
-    if (talk) say(STAGES[stageId].intro, mood === "working" ? "working" : "idle");
+    if (talk) say(STAGES[stageId].intro, robot.busy ? null : "awake");
 }
 
 function renderStage() {
@@ -401,6 +534,8 @@ async function loadScreeners() {
     const models = data.models.map((m) => ({ value: m.id, label: `${m.label} · ${m.input_per_mtok}/${m.output_per_mtok} $/M` + (m.status === "current" ? "" : ` (${m.status})`) }));
     fill($("screener-a"), models, data.default[0]);
     fill($("screener-b"), [{ value: "", label: "— sin segundo cribador —" }, ...models], data.default[1] || "");
+    fill($("wz-model"), models, data.assistant_default);
+    fill($("assign-model"), models, data.assignment_default);
     screenersChanged(false);
 }
 
@@ -430,7 +565,7 @@ function resetPaid(step) {
 }
 
 function paidOptions(step) {
-    if (step !== "screen") return { step };
+    if (step !== "screen") return { step, model: $("assign-model").value };
     const limit = parseInt($("screen-limit").value, 10);
     return { step, screeners: chosenScreeners(), limit: Number.isInteger(limit) && limit > 0 ? limit : null };
 }
@@ -438,6 +573,7 @@ function paidOptions(step) {
 async function estimate(step) {
     resetPaid(step);
     show($(`${step}-estimate`), "calculando…");
+    say("Haciendo números…", "think");
     try {
         const data = await postJson(runUrl("/estimate"), paidOptions(step));
         show($(`${step}-estimate`), data.output);
@@ -519,7 +655,10 @@ async function pollJob() {
     const key = `${job.step}|${job.started_at}`;
     if (job.running) {
         if (!jobWasRunning || key !== lastJobKey) {
-            say(START_LINES[job.step] || "En marcha.", "working");
+            robot.busy = true;
+            robot.completeBefore = overview ? overview.stages.every((stage) => stage.status !== "current" && stage.status !== "todo") : true;
+            robot.readSince = job.step === "screen" ? (Date.parse(job.started_at) || Date.now()) : null;
+            say(START_LINES[job.step] || "En marcha.", STEP_MOOD[job.step] || "think");
             if (job.run_id === currentRun) selectStageQuiet(stageOfStep(job.step));
         }
         jobWasRunning = true;
@@ -528,13 +667,21 @@ async function pollJob() {
         jobTimer = setTimeout(pollJob, 1200);
     } else if (jobWasRunning) {
         jobWasRunning = false;
+        robot.busy = false;
         const finished = stageOfStep(job.step);
         if (currentRun) await loadRun(currentRun, false);
         if (job.returncode === 0) {
-            say(DONE_LINES[job.step] || "Hecho.", "happy");
+            const complete = overview && overview.stages.every((stage) => stage.status !== "current" && stage.status !== "todo");
+            robot.keepPile = true;                     // the books read stay beside it while it celebrates
+            if (complete && !robot.completeBefore) {
+                say("Revisión completa, de la primera pregunta al informe. Esto hay que celebrarlo.", "cheer");
+                fireworks();
+            } else {
+                say(DONE_LINES[job.step] || "Hecho.", "cheer");
+            }
+            robot.keepPile = false;
             const node = document.querySelector(`.node[data-stage="${finished}"]`);
             if (node) node.classList.add("just-done");
-            setTimeout(() => { if (mood === "happy") setMood("idle"); }, 6000);
         } else {
             say("Algo ha fallado. No he cambiado nada que no debiera; el motivo está en la salida.", "error");
         }
@@ -587,7 +734,7 @@ async function openWizard() {
 
 function closeWizard() {
     $("wizard").hidden = true;
-    setMood("idle");
+    setMood("awake");
     loadRuns();
 }
 
@@ -596,10 +743,12 @@ const questionLines = () => $("wz-questions").value.split("\n").map((line) => li
 async function withWriting(button, line, action) {
     button.disabled = true;
     renderWizardFlow(true);
-    say(line, "writing");
+    robot.busy = true;
+    say(line, "write");
     try {
         return await action();
     } finally {
+        robot.busy = false;
         button.disabled = false;
         renderWizardFlow(false);
     }
@@ -614,7 +763,7 @@ $("wz-analyse").addEventListener("click", async () => {
     hide($("wz-error-1"));
     try {
         const data = await withWriting($("wz-analyse"), "Leyendo las preguntas una a una. Apunto lo que no me queda claro.", () =>
-            postJson("/api/v2/assistant/questions", { context: $("wz-context").value, questions: questionLines() }));
+            postJson("/api/v2/assistant/questions", { context: $("wz-context").value, questions: questionLines(), model: $("wz-model").value }));
         wizard.originals = data.questions;
         $("wz-overall").textContent = data.analysis.overall;
         const gaps = data.analysis.gaps || [];
@@ -667,7 +816,7 @@ $("wz-draft").addEventListener("click", async () => {
     const finals = [...document.querySelectorAll('#wz-cards textarea[data-final]')].map((t) => t.value.trim());
     try {
         const draft = await withWriting($("wz-draft"), "Redactando criterios y cadenas de búsqueda. Es un borrador: lo firmáis vosotros, no yo.", () =>
-            postJson("/api/v2/assistant/protocol", { context: $("wz-context").value, questions: finals, originals: wizard.originals, name: $("wz-name").value }));
+            postJson("/api/v2/assistant/protocol", { context: $("wz-context").value, questions: finals, originals: wizard.originals, name: $("wz-name").value, model: $("wz-model").value }));
         wizard.file = draft.file;
         $("wz-file-name").textContent = `config/${draft.file}`;
         const period = draft.year_from || draft.year_to ? `${draft.year_from ?? "…"}–${draft.year_to ?? "…"}` : "sin límite de años";
@@ -768,7 +917,9 @@ $("run-select").addEventListener("change", (event) => {
 });
 $("refresh-btn").addEventListener("click", () => loadRuns());
 
-setMood("idle");
+$("robot").addEventListener("click", pokeRobot);
+$("assign-model").addEventListener("change", () => resetPaid("assign"));
+setMood("awake");
 say("Arrancando…");
 loadScreeners().catch((e) => show($("page-error"), e.message));
 loadRuns().then(pollJob);

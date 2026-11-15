@@ -353,7 +353,9 @@ def cmd_assign(args) -> int:
     pending = sum(f.decision == "pending" for f in finals)
     by_id = {r.record_id: r for r in run.read_models("records.jsonl", Record)}
     records = [by_id[i] for i in included_ids]
-    model = config.get_assignment_model()
+    model = args.model or config.get_assignment_model()
+    if model not in {m["id"] for m in config.list_models()}:
+        raise PaletError(f"El modelo no está en el catálogo de palet.toml: {model}")
 
     system = assign.build_system_prompt(protocol)
     input_tokens = sum((len(system) + len(screening.build_user_message(r))) / 4 for r in records) * 1.35
@@ -546,7 +548,7 @@ def cmd_draft_protocol(args) -> int:
     context = Path(args.context).read_text(encoding="utf-8")
     questions = drafting.clean_questions(Path(args.questions).read_text(encoding="utf-8").splitlines())
     llm.reset_usage()
-    analysis = drafting.analyse_questions(context, questions)
+    analysis = drafting.analyse_questions(context, questions, args.model)
     print(f"Valoración general: {analysis.overall}\n")
     for advice, original in zip(analysis.questions, questions):
         print(f"{advice.id} [{advice.change}]\n  original:  {original}")
@@ -559,7 +561,7 @@ def cmd_draft_protocol(args) -> int:
     if args.analyse_only:
         return 0
     final = [a.suggested for a in analysis.questions] if args.accept_suggestions else questions
-    draft = drafting.draft_protocol(context, final)
+    draft = drafting.draft_protocol(context, final, args.model)
     path = ROOT / "config" / f"{drafting.slug(args.name)}.yaml"
     drafting.write_protocol(path, drafting.protocol_data(draft, final, questions), context)
     cost = sum(phase["cost_usd"] for phase in llm.usage_summary().values())
@@ -637,6 +639,7 @@ def main(argv=None) -> int:
 
     p = sub.add_parser("assign", help="chart included records: research questions and contribution")
     p.add_argument("--run", required=True)
+    p.add_argument("--model", default=None, help="model id for this run, instead of [assignment] in palet.toml")
     p.add_argument("--workers", type=int, default=None)
     p.add_argument("--estimate", action="store_true")
     p.add_argument("--replay", action="store_true")
@@ -680,6 +683,7 @@ def main(argv=None) -> int:
     p.add_argument("--name", default="draft", help="name of the protocol file to write in config/")
     p.add_argument("--analyse-only", action="store_true", help="only print the advice on the questions")
     p.add_argument("--accept-suggestions", action="store_true", help="draft with the suggested wordings")
+    p.add_argument("--model", default=None, help="model id, instead of [assistant] in palet.toml")
     p.set_defaults(func=cmd_draft_protocol)
 
     p = sub.add_parser("approve-protocol", help="mark a draft protocol as approved by the authors")

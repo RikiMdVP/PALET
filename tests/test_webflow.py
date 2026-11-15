@@ -209,12 +209,13 @@ def test_assistant_endpoints_from_questions_to_an_approved_protocol(client, tmp_
     config_dir.mkdir()
     monkeypatch.setattr(webflow, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(drafting, "analyse_questions",
-                        lambda context, questions: drafting.QuestionAnalysis.model_validate(sample.ANALYSIS))
+                        lambda context, questions, model=None: drafting.QuestionAnalysis.model_validate(sample.ANALYSIS))
+    seen_models = []
     clean = json.loads(json.dumps(sample.DRAFT))
     for search in clean["searches"]:
         search["blocks"] = {name: drafting._clean_terms(terms) for name, terms in search["blocks"].items()}
     monkeypatch.setattr(drafting, "draft_protocol",
-                        lambda context, questions: drafting.ProtocolDraft.model_validate(clean))
+                        lambda context, questions, model=None: (seen_models.append(model), drafting.ProtocolDraft.model_validate(clean))[1])
 
     short = client.post("/api/v2/assistant/questions", json={"context": "too short", "questions": sample.QUESTIONS})
     assert short.status_code == 400
@@ -227,8 +228,11 @@ def test_assistant_endpoints_from_questions_to_an_approved_protocol(client, tmp_
     assert advice.json()["questions"] == sample.QUESTIONS and len(advice.json()["analysis"]["questions"]) == 2
 
     final = [sample.QUESTIONS[0], sample.ANALYSIS["questions"][1]["suggested"]]
-    body = {"context": sample.CONTEXT, "questions": final, "originals": sample.QUESTIONS, "name": "Tabaco escolar"}
+    body = {"context": sample.CONTEXT, "questions": final, "originals": sample.QUESTIONS, "name": "Tabaco escolar",
+            "model": "claude-sonnet-5-5"}
+    assert client.post("/api/v2/assistant/protocol", json={**body, "model": "not-a-model"}).status_code == 400
     made = client.post("/api/v2/assistant/protocol", json=body)
+    assert seen_models == ["claude-sonnet-5-5"]
     assert made.status_code == 200 and made.json()["file"] == "tabaco_escolar.yaml"
     assert made.json()["searches"][0]["rq"] == "RQ1" and " AND " in made.json()["searches"][0]["query"]
     protocol = load_protocol(config_dir / "tabaco_escolar.yaml")
@@ -248,7 +252,7 @@ def test_assistant_reports_model_failures_without_details(client, monkeypatch):
     from palet import drafting
     import tests.test_drafting as sample
 
-    def boom(context, questions):
+    def boom(context, questions, model=None):
         raise RuntimeError("secret request body")
 
     monkeypatch.setattr(drafting, "analyse_questions", boom)
@@ -263,3 +267,18 @@ def test_approving_a_search_needs_who_and_confirmation(client):
     assert client.post(url, json={"source": "bad id!", "by": "RMV", "confirm": True}).status_code == 400
     assert client.post(url, json={"source": "openalex_rq1", "by": "", "confirm": True}).status_code == 400
     assert client.commands == []
+
+
+def test_models_can_be_chosen_for_charting(client):
+    catalogue = client.get("/api/v2/screeners").json()
+    assert catalogue["assistant_default"] == "claude-opus-5-5" and catalogue["assignment_default"] == "claude-opus-5-5"
+    assert client.post("/api/v2/runs/demo/run", json={"step": "assign", "model": "nope", "replay": True}).status_code == 400
+    sonnet = {"step": "assign", "model": "claude-sonnet-5-5"}
+    assert client.post("/api/v2/runs/demo/estimate", json={"step": "assign"}).status_code == 200
+    # The estimate was for the default model: a different model needs its own estimate.
+    assert client.post("/api/v2/runs/demo/run", json={**sonnet, "confirm_cost": True}).status_code == 400
+    assert client.post("/api/v2/runs/demo/estimate", json=sonnet).status_code == 200
+    assert client.commands[-1][-3:] == ["--model", "claude-sonnet-5-5", "--estimate"]
+    assert client.post("/api/v2/runs/demo/run", json={**sonnet, "confirm_cost": True}).status_code == 200
+    _wait_for_job()
+    assert client.commands[-1][-2:] == ["--model", "claude-sonnet-5-5"]

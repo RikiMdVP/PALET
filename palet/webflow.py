@@ -261,7 +261,16 @@ def run_overview(run_id: str) -> dict:
 # ── Commands ────────────────────────────────────────────────────────────────
 
 def _options_key(step: str, options: dict) -> tuple:
-    return (step, tuple(options.get("screeners") or ()), options.get("limit") or 0)
+    return (step, tuple(options.get("screeners") or ()), options.get("limit") or 0, options.get("model") or "")
+
+
+def _model(value) -> str | None:
+    """A model id of the catalogue, or None when none was chosen."""
+    if value in (None, ""):
+        return None
+    if not isinstance(value, str) or value not in {m["id"] for m in config.list_models()}:
+        raise WorkflowError("El modelo elegido no está en el catálogo de palet.toml.")
+    return value
 
 
 def clean_options(step: str, body: dict) -> dict:
@@ -295,6 +304,8 @@ def clean_options(step: str, body: dict) -> dict:
             raise WorkflowError("Indica una fuente del protocolo.")
         options["source"] = source
         options["count_only"] = bool(body.get("count_only"))
+    if step == "assign":
+        options["model"] = _model(body.get("model"))
     if step in PAID_STEPS:
         options["replay"] = bool(body.get("replay"))
     return options
@@ -306,6 +317,8 @@ def build_command(step: str, run_id: str, options: dict, estimate: bool = False)
         command += ["--screeners", ",".join(options["screeners"])]
     if options.get("limit"):
         command += ["--limit", str(options["limit"])]
+    if options.get("model"):
+        command += ["--model", options["model"]]
     if options.get("partial_year"):
         command += ["--partial-year", str(options["partial_year"])]
     if options.get("source"):
@@ -479,7 +492,7 @@ async def api_assistant_questions(request: Request):
     try:
         context = _text(body.get("context"), "Contexto de la revisión", 40, 6000)
         questions = _question_list(body.get("questions"))
-        analysis, cost = await _assistant_call(drafting.analyse_questions, context, questions)
+        analysis, cost = await _assistant_call(drafting.analyse_questions, context, questions, _model(body.get("model")))
     except WorkflowError as e:
         return _error(e)
     return JSONResponse({"questions": questions, "analysis": analysis.model_dump(), "cost_usd": cost})
@@ -503,7 +516,7 @@ async def api_assistant_protocol(request: Request):
         path = CONFIG_DIR / f"{name}.yaml"
         if path.exists():
             raise WorkflowError(f"Ya existe un protocolo llamado {path.name}. Elige otro nombre.", status=409)
-        draft, cost = await _assistant_call(drafting.draft_protocol, context, questions)
+        draft, cost = await _assistant_call(drafting.draft_protocol, context, questions, _model(body.get("model")))
         try:
             drafting.write_protocol(path, drafting.protocol_data(draft, questions, [" ".join(o.split()) for o in originals]),
                                     context)
@@ -573,7 +586,9 @@ async def api_screeners():
         default = [s["model"] for s in config.get_screening_settings()["screeners"]]
     except PaletConfigError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
-    return JSONResponse({"default": default, "models": config.list_models()})
+    return JSONResponse({"default": default, "models": config.list_models(),
+                         "assistant_default": config.get_assistant_model(),
+                         "assignment_default": config.get_assignment_model()})
 
 
 @router.get("/runs/{run_id}")

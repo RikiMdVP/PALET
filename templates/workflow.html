@@ -22,7 +22,7 @@
     <main class="page">
         <section class="hero">
             <div class="robot-wrap">
-                <svg id="robot" viewBox="0 0 24 24" role="img" aria-label="PALET, el asistente de la revisión"></svg>
+                <svg id="robot" viewBox="0 0 46 30" role="img" aria-label="PALET, el asistente de la revisión. Pulsa para despertarlo."><title>PALET</title></svg>
             </div>
             <div class="bubble" aria-live="polite"><span class="who">PALET&gt;</span> <span id="say"></span></div>
             <div class="stats" id="stats"></div>
@@ -43,7 +43,8 @@
                 <label class="field wide">preguntas de investigación, una por línea
                     <textarea id="wz-questions" rows="6" maxlength="9000"></textarea></label>
                 <div class="row">
-                    <label class="field">o cárgalas de un fichero de texto <input type="file" id="wz-file" accept=".txt,.md,text/plain"></label>
+                    <label class="field">modelo que analiza y redacta <select id="wz-model"></select></label>
+                    <label class="field">o carga las preguntas de un fichero de texto <input type="file" id="wz-file" accept=".txt,.md,text/plain"></label>
                     <button class="btn primary" type="button" id="wz-analyse">analizar preguntas</button>
                 </div>
                 <div class="notice error" id="wz-error-1" hidden></div>
@@ -156,6 +157,7 @@
 
                 <div class="stage" data-stage="assign">
                     <div class="row">
+                        <label class="field">modelo <select id="assign-model"></select></label>
                         <button class="btn" type="button" id="assign-estimate-btn">estimar coste</button>
                         <button class="btn ghost" type="button" id="assign-replay-btn">repetir desde la caché</button>
                     </div>
