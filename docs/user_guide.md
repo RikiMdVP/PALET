@@ -1,3 +1,5 @@
+> **PALET 2.0 (noviembre de 2026).** Esta guía describe el pipeline 1.0. El flujo nuevo (protocolo, cribado con dos modelos, decisión humana, asignación, informe) y su dashboard están descritos en `docs/ESTADO.md`, sección 6; se abre con `python -m uvicorn app:app --port 8000` en `/workflow`.
+
 # Guía para escribir buenos seed prompts
 
 PALET funciona mejor cuando tu seed prompt sigue el framework CPC:
