@@ -22,7 +22,7 @@
     <main class="page">
         <section class="hero">
             <div class="robot-wrap">
-                <svg id="robot" viewBox="0 0 16 16" role="img" aria-label="PALET, el asistente de la revisión"></svg>
+                <svg id="robot" viewBox="0 0 24 24" role="img" aria-label="PALET, el asistente de la revisión"></svg>
             </div>
             <div class="bubble" aria-live="polite"><span class="who">PALET&gt;</span> <span id="say"></span></div>
             <div class="stats" id="stats"></div>
@@ -32,6 +32,59 @@
 
         <section class="flow" id="flow" aria-label="Pasos de la revisión"></section>
 
+        <section class="panel wizard" id="wizard" hidden>
+            <div class="panel-head"><span class="prompt">$</span> palet nueva-revisión <button class="btn ghost small" type="button" id="wz-close" style="margin-left:auto">cerrar</button></div>
+
+            <div class="wz" data-wz="1">
+                <p class="help">Cuéntame de qué va la revisión y escribe las preguntas. Las leo, te digo qué afinaría y por qué, y tú decides. Después redacto un borrador de protocolo. Coste: unos céntimos por paso.</p>
+                <label class="field wide">nombre de la revisión <input type="text" id="wz-name" maxlength="60" placeholder="p. ej. Tabaco y adolescentes"></label>
+                <label class="field wide">contexto: qué queréis estudiar, dónde, en qué periodo y para qué
+                    <textarea id="wz-context" rows="5" maxlength="6000" placeholder="Unas líneas bastan. Cuanto más concreto el ámbito (población, lugar, años), mejores sugerencias."></textarea></label>
+                <label class="field wide">preguntas de investigación, una por línea
+                    <textarea id="wz-questions" rows="6" maxlength="9000"></textarea></label>
+                <div class="row">
+                    <label class="field">o cárgalas de un fichero de texto <input type="file" id="wz-file" accept=".txt,.md,text/plain"></label>
+                    <button class="btn primary" type="button" id="wz-analyse">analizar preguntas</button>
+                </div>
+                <div class="notice error" id="wz-error-1" hidden></div>
+                <details class="alt">
+                    <summary>ya tengo un protocolo escrito</summary>
+                    <div class="row">
+                        <label class="field">protocolo <select id="new-protocol"></select></label>
+                        <label class="field">identificador de la ejecución <input type="text" id="new-id" maxlength="60" placeholder="p. ej. isabel_v2"></label>
+                        <button class="btn" type="button" id="new-create">crear revisión</button>
+                    </div>
+                    <div class="notice error" id="new-error" hidden></div>
+                </details>
+            </div>
+
+            <div class="wz" data-wz="2">
+                <p class="help" id="wz-overall"></p>
+                <div class="notice warn" id="wz-gaps" hidden></div>
+                <div id="wz-cards"></div>
+                <p class="note">En cada pregunta queda el texto que se usará. Puedes editarlo a mano. No hay «aceptar todo»: son vuestras preguntas.</p>
+                <div class="row">
+                    <button class="btn ghost" type="button" id="wz-back-1">← volver</button>
+                    <button class="btn primary" type="button" id="wz-draft">redactar protocolo</button>
+                </div>
+                <div class="notice error" id="wz-error-2" hidden></div>
+            </div>
+
+            <div class="wz" data-wz="3">
+                <p class="help">Borrador escrito en <code id="wz-file-name"></code>. Todo lo de abajo es una propuesta: edita el fichero si algo no os convence.</p>
+                <dl class="kv" id="wz-kv"></dl>
+                <table class="table" id="wz-criteria"></table>
+                <div id="wz-searches"></div>
+                <div class="notice warn" id="wz-notes" hidden></div>
+                <div class="row">
+                    <label class="field">identificador de la ejecución <input type="text" id="wz-run-id" maxlength="60"></label>
+                    <button class="btn primary" type="button" id="wz-create">crear revisión con este protocolo</button>
+                </div>
+                <p class="note">Se puede crear la revisión con el protocolo en borrador para contar y ajustar las búsquedas. El cribado no arranca hasta que lo aprobéis (paso «protocolo»).</p>
+                <div class="notice error" id="wz-error-3" hidden></div>
+            </div>
+        </section>
+
         <section class="work" id="work" hidden>
             <div class="panel" id="stage-panel">
                 <div class="panel-head"><span class="prompt">$</span> <span id="stage-title"></span></div>
@@ -40,13 +93,23 @@
                 <div class="stage" data-stage="protocol">
                     <dl class="kv" id="protocol-kv"></dl>
                     <ol class="rqs" id="protocol-rqs"></ol>
+                    <table class="table" id="protocol-criteria"></table>
                     <p class="note">El protocolo se edita en su fichero de <code>config/</code>. Lo aprueban los autores; PALET no lo cambia.</p>
+                    <div id="protocol-approve" hidden>
+                        <div class="row">
+                            <label class="field">aprobado por (nombres o iniciales) <input type="text" id="protocol-by" maxlength="120"></label>
+                            <label class="check"><input type="checkbox" id="protocol-confirm"> los autores hemos revisado preguntas, criterios y búsquedas</label>
+                            <button class="btn primary" type="button" id="protocol-approve-btn">aprobar protocolo</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="stage" data-stage="search">
                     <table class="table" id="sources"></table>
-                    <p class="note">Una cadena solo se puede descargar cuando los autores la aprueban. Se hace en la terminal, a propósito:<br>
-                        <code id="approve-cmd"></code></p>
+                    <div class="row">
+                        <label class="field">quién aprueba las cadenas (nombres o iniciales) <input type="text" id="approver" maxlength="120"></label>
+                    </div>
+                    <p class="note">Una cadena solo se descarga cuando los autores la aprueban. Mira primero su recuento; «aprobar» pide una segunda pulsación para confirmar.</p>
                 </div>
 
                 <div class="stage" data-stage="dedup">
@@ -119,21 +182,6 @@
             </div>
         </section>
     </main>
-
-    <dialog id="new-dialog">
-        <form method="dialog" id="new-form">
-            <div class="panel-head"><span class="prompt">$</span> nueva revisión</div>
-            <p class="help">Crea una ejecución a partir de un protocolo de <code>config/</code> e importa sus fuentes manuales.</p>
-            <label class="field wide">protocolo <select id="new-protocol"></select></label>
-            <label class="field wide">nombre <input type="text" id="new-label" maxlength="80" placeholder="p. ej. Capítulo ISABEL"></label>
-            <label class="field wide">identificador <input type="text" id="new-id" maxlength="60" placeholder="p. ej. isabel_v2"></label>
-            <div class="notice error" id="new-error" hidden></div>
-            <div class="row end">
-                <button class="btn ghost" type="button" id="new-cancel">cancelar</button>
-                <button class="btn primary" type="button" id="new-create">crear</button>
-            </div>
-        </form>
-    </dialog>
 
     <script src="/static/js/workflow.js"></script>
 </body>

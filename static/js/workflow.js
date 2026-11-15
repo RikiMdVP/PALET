@@ -12,52 +12,92 @@ let lastJobKey = null;      // step + started_at of the job whose end we have al
 let jobWasRunning = false;
 
 // ── The robot ────────────────────────────────────────────────────────
-// A 16x16 pixel figure drawn from text rows. Letters are colours; moods swap the face rows.
+// A 24x24 pixel figure drawn from text rows: head (with a face that changes), body (with a pose that
+// changes) and feet. Letters are colours. Original design; no image files.
 
-const ROBOT_ROWS = [
-    ".......aa.......",
-    ".......dd.......",
-    "...dddddddddd...",
-    "..dbbbbbbbbbbd..",
-    "..dbvvvvvvvvbd..",
-    "..db%EYES1%bd..",
-    "..db%EYES2%bd..",
-    "..dbvvvvvvvvbd..",
-    "..db%MOUTH%bd..",
-    "..dbbbbbbbbbbd..",
-    "...dddddddddd...",
-    ".....dbbbbd.....",
-    "..hhdbbccbbdhh..",
-    "..h.dbbbbbbd.h..",
-    ".....dddddd.....",
-    "....ff....ff....",
+const HEAD_TOP = [
+    "...........aa...........",
+    "...........aa...........",
+    "...........oo...........",
+    "....oooooooooooooooo....",
+    "...obbbbbbbbbbbbbbbbo...",
+    "..obbvvvvvvvvvvvvvvbbo..",
 ];
+const FACE_FRAME = [["..obv", "vbo.."], [".sobv", "vbos."], [".sobv", "vbos."], ["..obv", "vbo.."], ["..obv", "vbo.."]];
+const HEAD_BOTTOM = [
+    "..obbvvvvvvvvvvvvvvbbo..",
+    "...obbbbbbbbbbbbbbbbo...",
+    "....oooooooooooooooo....",
+];
+const SMILE = ["vkkvvMvvMvvkkv", "vvvvvvMMvvvvvv"];
+const FLAT = ["vkkvvvvvvvvkkv", "vvvvvMMMMvvvvv"];
 const FACES = {
-    idle: ["vEEvvEEv", "vEEvvEEv", "vvMMMMvv"],
-    blink: ["vvvvvvvv", "vEEvvEEv", "vvMMMMvv"],
-    happy: ["vEEvvEEv", "EvvEEvvE", "vMMMMMMv"],
-    ask: ["vEEvvEEv", "vEEvvEEv", "vvvMMvvv"],
-    error: ["EvvEEvvE", "vEEvvEEv", "vvMMMMvv"],
-    workA: ["EEvvEEvv", "EEvvEEvv", "vvvMMvvv"],
-    workB: ["vvEEvvEE", "vvEEvvEE", "vvvMMvvv"],
+    idle: ["vvEEEvvvvEEEvv", "vvEwEvvvvEwEvv", "vvEEEvvvvEEEvv", ...SMILE],
+    blink: ["vvvvvvvvvvvvvv", "vvEEEvvvvEEEvv", "vvvvvvvvvvvvvv", ...SMILE],
+    happy: ["vvvEvvvvvvEvvv", "vvEvEvvvvEvEvv", "vvvvvvvvvvvvvv", "vkkvMvvvvMvkkv", "vvvvvMMMMvvvvv"],
+    ask: ["vvEEEvvvvEEEvv", "vvEwEvvvvEwEvv", "vvEEEvvvvEEEvv", "vkkvvvMMvvvkkv", "vvvvvvMMvvvvvv"],
+    error: ["vvEvEvvvvEvEvv", "vvvEvvvvvvEvvv", "vvEvEvvvvEvEvv", "vvvvvvMMvvvvvv", "vvvvvMvvMvvvvv"],
+    workA: ["vvEEEvvvvEEEvv", "vvwEEvvvvwEEvv", "vvEEEvvvvEEEvv", ...FLAT],
+    workB: ["vvEEEvvvvEEEvv", "vvEEwvvvvEEwvv", "vvEEEvvvvEEEvv", ...FLAT],
+    write: ["vvvvvvvvvvvvvv", "vvEEEvvvvEEEvv", "vvEwEvvvvEwEvv", "vkkvvvvvvvvkkv", "vvvvvvMMkvvvvv"],
 };
-const ROBOT_COLOURS = { d: "#5b6a62", b: "#cfd8d2", v: "#0f1d17", E: "#7ee0a1", M: "#7ee0a1", h: "#9aa8a0", f: "#5b6a62", c: "#7ee0a1", a: "#7ee0a1" };
-const MOOD_LIGHT = { idle: "#7ee0a1", happy: "#7ee0a1", ask: "#f2c14e", error: "#ff7b72", working: "#f2c14e" };
+const FEET = ["........ff....ff........", ".......fff....fff.......", "........................", "........................"];
+const POSES = {
+    stand: [
+        ".......obbbbbbbbo.......",
+        "....hhobbbccccbbbohh....",
+        "...hh.obbbbbbbbbbo.hh...",
+        "...hh.obbsbbbbsbbo.hh...",
+        "......obbbbbbbbbbo......",
+        ".......oooooooooo.......",
+    ],
+    cheer: [
+        "...hh..obbbbbbbbo..hh...",
+        "....hhobbbccccbbbohh....",
+        "......obbbbbbbbbbo......",
+        "......obbsbbbbsbbo......",
+        "......obbbbbbbbbbo......",
+        ".......oooooooooo.......",
+    ],
+    // holding a notepad (n paper, l written lines, r binding) and a pencil (p, tip t)
+    writeA: [
+        ".......obbbbbbbbo.......",
+        "....hhobbbbbbbbbbohh....",
+        "...hhrrrrrrrrrrbbo......",
+        "...hhnllnllllntpppkhh...",
+        "....hnlllnllnnnbbo......",
+        "....hnnnnnnnnnnoo.......",
+    ],
+    writeB: [
+        ".......obbbbbbbbo.......",
+        "....hhobbbbbbbbbbohh....",
+        "...hhrrrrrrrrrrbbo......",
+        "...hhnllnllllnnbbo......",
+        "....hnlllnlllltpppkhh...",
+        "....hnnnnnnnnnnoo.......",
+    ],
+};
+const ROBOT_COLOURS = {
+    o: "#4d5b54", b: "#dfe7e2", s: "#b4c0b9", v: "#0f1d17", E: "#7ee0a1", w: "#f4fff8", M: "#7ee0a1", k: "#f59fb0",
+    h: "#b4c0b9", f: "#4d5b54", c: "#7ee0a1", a: "#7ee0a1", n: "#f4f1e4", l: "#8d9a93", r: "#4d5b54", p: "#f2c14e", t: "#3a2a1a",
+};
+const MOOD_LIGHT = { idle: "#7ee0a1", happy: "#7ee0a1", ask: "#f2c14e", error: "#ff7b72", working: "#f2c14e", writing: "#f2c14e" };
 
 let mood = "idle";
 let robotFrame = 0;
 
-function drawRobot(face) {
+function drawRobot(face, pose) {
     const svg = $("robot");
-    const [eyes1, eyes2, mouth] = FACES[face];
+    const rows = [...HEAD_TOP, ...FACES[face].map((inner, i) => FACE_FRAME[i][0] + inner + FACE_FRAME[i][1]),
+        ...HEAD_BOTTOM, ...POSES[pose], ...FEET];
     const light = MOOD_LIGHT[mood] || MOOD_LIGHT.idle;
+    const busy = mood === "working" || mood === "writing";
     const parts = [];
-    ROBOT_ROWS.forEach((template, y) => {
-        const row = template.replace("%EYES1%", eyes1).replace("%EYES2%", eyes2).replace("%MOUTH%", mouth);
+    rows.forEach((row, y) => {
         [...row].forEach((cell, x) => {
             if (cell === ".") return;
             let colour = ROBOT_COLOURS[cell];
-            if (cell === "a" || cell === "c") colour = (mood === "working" && robotFrame % 2) ? "#23302a" : light;
+            if (cell === "a" || cell === "c") colour = (busy && robotFrame % 2) ? "#23302a" : light;
             if ((cell === "E" || cell === "M") && mood === "error") colour = "#ff7b72";
             parts.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${colour}"/>`);
         });
@@ -66,18 +106,26 @@ function drawRobot(face) {
     svg.dataset.mood = mood;
 }
 
+function drawMood() {
+    const odd = robotFrame % 2;
+    if (mood === "working") drawRobot(odd ? "workB" : "workA", "stand");
+    else if (mood === "writing") drawRobot("write", odd ? "writeB" : "writeA");
+    else if (mood === "happy") drawRobot("happy", "cheer");
+    else drawRobot(mood, "stand");
+}
+
 function setMood(next) {
     mood = next;
-    drawRobot(next === "working" ? "workA" : next);
+    drawMood();
 }
 
 setInterval(() => {
     robotFrame += 1;
-    if (mood === "working") {
-        drawRobot(robotFrame % 2 ? "workB" : "workA");
+    if (mood === "working" || mood === "writing") {
+        drawMood();
     } else if (mood === "idle" && !reducedMotion && robotFrame % 7 === 0) {
-        drawRobot("blink");
-        setTimeout(() => { if (mood === "idle") drawRobot("idle"); }, 160);
+        drawRobot("blink", "stand");
+        setTimeout(() => { if (mood === "idle") drawMood(); }, 160);
     }
 }, 450);
 
@@ -98,10 +146,10 @@ function say(text, nextMood) {
 
 // What PALET says. It is a meticulous librarian: brief, a little dry, never decides for the authors.
 const STAGES = {
-    protocol: { title: "protocolo", help: "Preguntas de investigación, criterios, listas de revistas y reglas de decisión. Lo fijan los autores antes de empezar.",
-        intro: "El protocolo es vuestro. Yo lo leo, lo aplico al pie de la letra y no toco ni una coma." },
+    protocol: { title: "protocolo", help: "Preguntas de investigación, criterios, listas de revistas y reglas de decisión. Lo fijan los autores antes de empezar; mientras esté en borrador no se criba nada.",
+        intro: "El protocolo es vuestro. Yo puedo redactar el borrador, pero lo aprobáis vosotros; después lo aplico al pie de la letra." },
     search: { title: "búsqueda", help: "Fuentes del protocolo: exportaciones importadas a mano y cadenas de búsqueda en OpenAlex. Recontar y descargar no cuesta dinero.",
-        intro: "Cada cadena está en el protocolo. Puedo contarla cuando quieras; descargarla, solo si la habéis aprobado." },
+        intro: "Cada cadena está en el protocolo. Cuenta primero: si salen miles, la cadena es demasiado amplia. Descargo solo las aprobadas." },
     dedup: { title: "duplicados", help: "Une los registros repetidos entre fuentes (por DOI, o por título, autor y año). Los pares dudosos se listan y no se unen. Hay que repetirlo al añadir una fuente.",
         intro: "El mismo artículo suele llegar por tres puertas distintas. Los junto; los dudosos os los dejo anotados." },
     journals: { title: "revistas", help: "Comprueba por ISSN qué registros están en las listas de revistas del protocolo. Los que no están se excluyen en el cribado sin llamar a ningún modelo.",
@@ -199,6 +247,13 @@ function renderStats(run) {
 
 function renderFlow(run, job) {
     const running = job && job.running && job.run_id === run.run_id ? stageOfStep(job.step) : null;
+    const questions = Object.keys((run.protocol || {}).research_questions || {}).length;
+    const first = el("button", "node done");
+    first.type = "button";
+    const firstHead = el("span", "n");
+    firstHead.append(el("span", null, "00"), el("span", "mark", "✓"));
+    first.append(firstHead, el("span", "name", "Preguntas"), el("span", "detail", `${questions} preguntas fijadas`));
+    first.addEventListener("click", () => selectStage("protocol", true));
     const nodes = run.stages.map((stage, index) => {
         const node = el("button", `node ${stage.status}`);
         node.type = "button";
@@ -215,7 +270,8 @@ function renderFlow(run, job) {
     // the connector that leads into the running step carries a moving packet
     const runningIndex = run.stages.findIndex((stage) => stage.id === running);
     if (runningIndex > 0) nodes[runningIndex - 1].classList.add("feeding");
-    $("flow").replaceChildren(...nodes);
+    if (runningIndex === 0) first.classList.add("feeding");
+    $("flow").replaceChildren(first, ...nodes);
 }
 
 function stageOfStep(step) {
@@ -224,6 +280,7 @@ function stageOfStep(step) {
 
 async function loadRun(runId, announce) {
     currentRun = runId;
+    $("wizard").hidden = true;
     localStorage.setItem("palet-run", runId);
     $("bar-run").textContent = runId;
     hide($("page-error"));
@@ -270,6 +327,17 @@ function renderStage() {
         ["síntesis", p.synthesis_selection === "core_only" ? "solo estudios principales para alguna pregunta" : "todos los incluidos"]];
     $("protocol-kv").replaceChildren(...pairs.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
     $("protocol-rqs").replaceChildren(...Object.values(p.research_questions || {}).map((text) => el("li", null, text)));
+    const criteria = $("protocol-criteria");
+    criteria.replaceChildren();
+    for (const criterion of p.criteria || []) {
+        const row = criteria.insertRow();
+        row.insertCell().textContent = criterion.id;
+        const rule = row.insertCell();
+        rule.textContent = criterion.rule;
+        rule.style.whiteSpace = "normal";
+        rule.style.textAlign = "left";
+    }
+    $("protocol-approve").hidden = p.status === "approved";
 
     // search
     const table = $("sources");
@@ -291,6 +359,13 @@ function renderStage() {
             count.type = "button";
             count.addEventListener("click", () => runStep({ step: "search", source: source.id, count_only: true }));
             actions.appendChild(count);
+            if (source.status !== "approved") {
+                const approve = el("button", "btn small", "aprobar");
+                approve.type = "button";
+                approve.style.marginLeft = "6px";
+                approve.addEventListener("click", () => approveSearch(source.id, approve));
+                actions.appendChild(approve);
+            }
             if (source.status === "approved") {
                 const fetchButton = el("button", "btn small", source.downloaded === null ? "descargar" : "redescargar");
                 fetchButton.type = "button";
@@ -300,8 +375,6 @@ function renderStage() {
             }
         }
     }
-    const waiting = run.sources.find((source) => source.type !== "manual_import" && source.status !== "approved");
-    $("approve-cmd").textContent = `python -m palet approve-search --protocol config/${p.file || "<protocolo>.yaml"} --source ${waiting ? waiting.id : "<fuente>"} --by "<iniciales>"`;
 
     // journals
     $("journals-download").href = fileUrl("journal_check.csv");
@@ -451,7 +524,7 @@ async function pollJob() {
         }
         jobWasRunning = true;
         lastJobKey = key;
-        if (overview && job.run_id === currentRun) renderFlow(overview, job);
+        if (overview && job.run_id === currentRun && $("wizard").hidden) renderFlow(overview, job);
         jobTimer = setTimeout(pollJob, 1200);
     } else if (jobWasRunning) {
         jobWasRunning = false;
@@ -474,39 +547,218 @@ function selectStageQuiet(stageId) {
     if (overview) renderStage();
 }
 
-// ── New review ───────────────────────────────────────────────────────
+// ── New review: questions → advice → draft protocol → run ────────────
 
-$("new-btn").addEventListener("click", async () => {
-    hide($("new-error"));
+const WIZARD_FLOW = [["Preguntas", "contexto y preguntas"], ["Protocolo", "criterios y búsquedas"], ["Búsqueda", ""], ["Duplicados", ""],
+    ["Revistas", ""], ["Cribado", ""], ["Decisión humana", ""], ["Asignación", ""], ["Informe", ""]];
+let wizard = { step: 1, originals: [], file: null };
+
+function renderWizardFlow(busy) {
+    const active = wizard.step === 3 ? 1 : 0;
+    $("flow").replaceChildren(...WIZARD_FLOW.map(([label, detail], index) => {
+        const status = index < active ? "done" : (index === active ? "current" : "todo");
+        const node = el("div", `node ${status}` + (index === active && busy ? " running" : ""));
+        const head = el("span", "n");
+        head.append(el("span", null, String(index).padStart(2, "0")), el("span", "mark", index < active ? "✓" : (index === active ? (busy ? "…" : "▸") : "")));
+        node.append(head, el("span", "name", label), el("span", "detail", detail));
+        return node;
+    }));
+}
+
+function wizardStep(step) {
+    wizard.step = step;
+    document.querySelectorAll(".wz").forEach((node) => node.classList.toggle("on", Number(node.dataset.wz) === step));
+    renderWizardFlow(false);
+}
+
+async function openWizard() {
+    $("wizard").hidden = false;
+    $("work").hidden = true;
+    $("stats").replaceChildren();
+    $("bar-run").textContent = "nueva";
+    for (const id of ["wz-error-1", "wz-error-2", "wz-error-3", "new-error"]) hide($(id));
+    wizardStep(1);
+    say("Una revisión nueva. Cuéntame de qué va y escribe las preguntas tal como las tengáis: yo las leo con lápiz en mano.", "ask");
     try {
         const protocols = (await api("/api/v2/protocols")).filter((p) => !p.error);
-        fill($("new-protocol"), protocols.map((p) => ({ value: p.file, label: `${p.file} · v${p.version} · ${p.status} · ${p.questions} preguntas` })), protocols.length ? protocols[protocols.length - 1].file : "");
-    } catch (e) {
-        show($("new-error"), e.message);
-    }
-    $("new-dialog").showModal();
-    say("Una revisión nueva. Elige el protocolo: sin protocolo aprobado no cribo nada.", "ask");
-});
-$("new-cancel").addEventListener("click", () => { $("new-dialog").close(); setMood("idle"); });
-$("new-label").addEventListener("input", (event) => {
-    if ($("new-id").dataset.touched) return;
-    $("new-id").value = event.target.value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
-});
-$("new-id").addEventListener("input", (event) => { event.target.dataset.touched = "1"; });
-$("new-create").addEventListener("click", async () => {
-    hide($("new-error"));
+        fill($("new-protocol"), protocols.map((p) => ({ value: p.file, label: `${p.file} · v${p.version} · ${p.status}` })), protocols.length ? protocols[protocols.length - 1].file : "");
+    } catch (e) { /* the list is optional */ }
+}
+
+function closeWizard() {
+    $("wizard").hidden = true;
+    setMood("idle");
+    loadRuns();
+}
+
+const questionLines = () => $("wz-questions").value.split("\n").map((line) => line.trim()).filter(Boolean);
+
+async function withWriting(button, line, action) {
+    button.disabled = true;
+    renderWizardFlow(true);
+    say(line, "writing");
     try {
-        const created = await postJson("/api/v2/runs", { protocol: $("new-protocol").value, label: $("new-label").value, run_id: $("new-id").value });
-        $("new-dialog").close();
+        return await action();
+    } finally {
+        button.disabled = false;
+        renderWizardFlow(false);
+    }
+}
+
+$("wz-file").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (file) $("wz-questions").value = (await file.text()).slice(0, 9000);
+});
+
+$("wz-analyse").addEventListener("click", async () => {
+    hide($("wz-error-1"));
+    try {
+        const data = await withWriting($("wz-analyse"), "Leyendo las preguntas una a una. Apunto lo que no me queda claro.", () =>
+            postJson("/api/v2/assistant/questions", { context: $("wz-context").value, questions: questionLines() }));
+        wizard.originals = data.questions;
+        $("wz-overall").textContent = data.analysis.overall;
+        const gaps = data.analysis.gaps || [];
+        if (gaps.length) show($("wz-gaps"), "El contexto habla de esto y ninguna pregunta lo cubre:\n" + gaps.map((g) => `· ${g}`).join("\n")); else hide($("wz-gaps"));
+        $("wz-cards").replaceChildren(...data.analysis.questions.map((advice, index) => {
+            const original = data.questions[index];
+            const card = el("div", "card");
+            const head = el("div", "card-head");
+            const labels = { none: "sin cambios", minor: "matiz", major: "cambio de fondo" };
+            head.append(el("b", null, advice.id), el("span", `tag ${advice.change === "none" ? "ok" : "wait"}`, labels[advice.change]));
+            card.append(head, el("p", "orig", `original: ${original}`));
+            if (advice.issues.length) {
+                const list = el("ul");
+                advice.issues.forEach((issue) => list.appendChild(el("li", null, issue)));
+                card.appendChild(list);
+            }
+            const text = el("textarea");
+            text.rows = 3;
+            text.maxLength = 800;
+            text.dataset.final = "1";
+            text.value = advice.change === "none" ? original : advice.suggested;
+            if (advice.change !== "none") {
+                card.appendChild(el("p", "why", `por qué: ${advice.rationale}`));
+                const row = el("div", "row");
+                const useSuggested = el("button", "btn small", "usar la sugerencia");
+                const keepOriginal = el("button", "btn small", "conservar la original");
+                useSuggested.type = keepOriginal.type = "button";
+                useSuggested.addEventListener("click", () => { text.value = advice.suggested; });
+                keepOriginal.addEventListener("click", () => { text.value = original; });
+                row.append(useSuggested, keepOriginal);
+                card.appendChild(row);
+            }
+            card.appendChild(text);
+            return card;
+        }));
+        wizardStep(2);
+        const changed = data.analysis.questions.filter((q) => q.change !== "none").length;
+        say(changed ? `Tengo sugerencias para ${changed} de ${data.questions.length}. He dejado puesta mi versión; si prefieres la tuya, cámbiala. Coste: ${data.cost_usd} $.`
+            : `Las ${data.questions.length} están claras tal como están. No toco nada. Coste: ${data.cost_usd} $.`, "ask");
+    } catch (e) {
+        show($("wz-error-1"), e.message);
+        say("No he podido analizarlas. El motivo está en rojo.", "error");
+    }
+});
+
+$("wz-back-1").addEventListener("click", () => wizardStep(1));
+
+$("wz-draft").addEventListener("click", async () => {
+    hide($("wz-error-2"));
+    const finals = [...document.querySelectorAll('#wz-cards textarea[data-final]')].map((t) => t.value.trim());
+    try {
+        const draft = await withWriting($("wz-draft"), "Redactando criterios y cadenas de búsqueda. Es un borrador: lo firmáis vosotros, no yo.", () =>
+            postJson("/api/v2/assistant/protocol", { context: $("wz-context").value, questions: finals, originals: wizard.originals, name: $("wz-name").value }));
+        wizard.file = draft.file;
+        $("wz-file-name").textContent = `config/${draft.file}`;
+        const period = draft.year_from || draft.year_to ? `${draft.year_from ?? "…"}–${draft.year_to ?? "…"}` : "sin límite de años";
+        $("wz-kv").replaceChildren(...[["título", draft.title], ["periodo", period], ["estado", "borrador, sin aprobar"]].flatMap(([k, v]) => [el("dt", null, k), el("dd", null, v)]));
+        const table = $("wz-criteria");
+        table.replaceChildren();
+        const head = table.insertRow();
+        for (const title of ["criterio", "tipo", "regla"]) head.appendChild(el("th", null, title));
+        for (const criterion of draft.criteria) {
+            const row = table.insertRow();
+            row.insertCell().textContent = criterion.id;
+            row.insertCell().textContent = criterion.kind === "include" ? "inclusión" : "exclusión";
+            const rule = row.insertCell();
+            rule.textContent = criterion.rule;
+            rule.style.whiteSpace = "normal";
+            rule.style.textAlign = "left";
+        }
+        $("wz-searches").replaceChildren(...draft.searches.map((search) => {
+            const block = el("p", "query");
+            block.append(el("b", null, `${search.rq} · `), document.createTextNode(search.query));
+            return block;
+        }));
+        if (draft.notes.length) show($("wz-notes"), draft.notes.map((n) => `· ${n}`).join("\n")); else hide($("wz-notes"));
+        $("wz-run-id").value = draft.file.replace(/\.yaml$/, "");
+        wizardStep(3);
+        say(`Borrador listo en config/${draft.file}. Leedlo con calma: los criterios deciden qué entra. Coste: ${draft.cost_usd} $.`, "happy");
+    } catch (e) {
+        show($("wz-error-2"), e.message);
+        say("No he podido redactar el borrador. El motivo está en rojo.", "error");
+    }
+});
+
+async function createRun(protocol, label, runId, errorElement, button) {
+    hide(errorElement);
+    button.disabled = true;
+    try {
+        const created = await postJson("/api/v2/runs", { protocol, label, run_id: runId });
+        $("wizard").hidden = true;
         $("job-command").textContent = "python -m palet init";
         $("job-log").textContent = created.output;
         selectedStage = null;
         await loadRuns(created.run_id);
-        say("Revisión creada y fuentes manuales importadas. Empezamos por la búsqueda.", "happy");
+        say("Revisión creada. Siguiente: mirar el recuento de cada búsqueda antes de aprobarla.", "happy");
     } catch (e) {
-        show($("new-error"), e.message);
+        show(errorElement, e.message);
+        say("No he podido crear la revisión. El motivo está en rojo.", "error");
+    } finally {
+        button.disabled = false;
+    }
+}
+
+$("wz-create").addEventListener("click", () => createRun(wizard.file, $("wz-name").value || wizard.file, $("wz-run-id").value, $("wz-error-3"), $("wz-create")));
+$("new-create").addEventListener("click", () => createRun($("new-protocol").value, $("wz-name").value || $("new-id").value, $("new-id").value, $("new-error"), $("new-create")));
+$("new-btn").addEventListener("click", openWizard);
+$("wz-close").addEventListener("click", closeWizard);
+
+// ── Approvals (deliberate acts of the authors) ───────────────────────
+
+$("protocol-approve-btn").addEventListener("click", async () => {
+    hide($("stage-error"));
+    try {
+        await postJson("/api/v2/protocols/approve", { file: overview.protocol.file, by: $("protocol-by").value, confirm: $("protocol-confirm").checked });
+        $("protocol-confirm").checked = false;
+        await loadRun(currentRun, false);
+        say("Protocolo aprobado y fechado. A partir de aquí lo aplico tal cual.", "happy");
+    } catch (e) {
+        show($("stage-error"), e.message);
+        say("No lo doy por aprobado todavía. El motivo está en rojo.", "error");
     }
 });
+
+async function approveSearch(sourceId, button) {
+    if (button.dataset.armed !== "1") {            // first press arms the button; the second one approves
+        button.dataset.armed = "1";
+        button.textContent = "¿seguro? confirmar";
+        setTimeout(() => { button.dataset.armed = ""; button.textContent = "aprobar"; }, 5000);
+        say("Aprobar una cadena es decisión vuestra. ¿Has mirado su recuento? Pulsa otra vez para confirmar.", "ask");
+        return;
+    }
+    hide($("stage-error"));
+    try {
+        const done = await postJson(runUrl("/approve-search"), { source: sourceId, by: $("approver").value, confirm: true });
+        $("job-command").textContent = "python -m palet approve-search";
+        $("job-log").textContent = done.output;
+        await loadRun(currentRun, false);
+        say("Cadena aprobada. Ya se puede descargar.", "happy");
+    } catch (e) {
+        show($("stage-error"), e.message);
+        say("No he podido aprobarla. El motivo está en rojo.", "error");
+    }
+}
 
 $("run-select").addEventListener("change", (event) => {
     resetPaid("screen");

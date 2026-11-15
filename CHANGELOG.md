@@ -3,6 +3,16 @@
 All notable changes to PALET are recorded here, one entry per work package
 of the PALET 2.0 refactor (see `docs/PALET_auditoria_plan_mejora.tex`).
 
+## Protocol assistant — 2026-11-15
+
+### Added
+- A review can start from a context and research questions again (`+ nueva revisión` in the dashboard, or `python -m palet draft-protocol`). The assistant model (a) reviews the wording of each question and suggests a sharper one with its reasons, and (b) once the authors have fixed the questions, drafts eligibility criteria and one search per question. The result is a protocol file with `status: draft`; nothing is screened until the authors approve it (`approve-protocol`, or the protocol panel of the dashboard). Original wordings are kept in `research_questions_original`.
+- Searches and the protocol can be approved from the dashboard (who approves is recorded; searches need a second press).
+- PALET the robot redrawn at 24x24 with more detail; it takes a notepad and a pencil while the assistant writes.
+
+### Fixed
+- The PRISMA counts dropped exclusion reasons whose code was defined by the protocol and not known to PALET.
+
 ## Dashboard 2.0 and selection for the synthesis — 2026-11-14
 
 ### Added
