@@ -23,15 +23,15 @@ nueva: cada afirmación debe estar respaldada por el estudio que se cita.
 | Únicos tras deduplicar | 2.119 |
 | Excluidos | 1.747 |
 | · revista fuera de SCIE, SSCI y ESCI | 1.064 |
-| · criterios, con acuerdo de los dos cribadores | 402 |
+| · criterios de fondo (377 por acuerdo de los dos cribadores, 25 por decisión de los autores) | 402 |
 | · sin acuerdo entre cribadores | 179 |
 | · sin resumen | 88 |
-| · otros motivos (decisión de los autores) | 14 |
+| · otro motivo (decisión de los autores) | 14 |
 | Elegibles | 372 (358 por acuerdo, 14 por decisión de los autores sobre 53 pendientes) |
 | **Sintetizados: principales para alguna pregunta** | **170** |
 
 Principales por pregunta: RQ1 40 · RQ2 38 · RQ3 5 · RQ4 31 · RQ5 4 · RQ6 57 · RQ7 7 (12 lo son en dos).
-Acuerdo entre cribadores: 842/967 (87,1 %), kappa = 0,794. Coste de modelo acumulado ≈ 60 $.
+Acuerdo entre cribadores: 842/967 (87,1 %), kappa = 0,794. Coste de modelo acumulado: unos 60 $ (suma aproximada de las ejecuciones; el manifiesto solo conserva el uso del último cribado y de la asignación, 28,57 $).
 
 ## 3. Método vigente
 
