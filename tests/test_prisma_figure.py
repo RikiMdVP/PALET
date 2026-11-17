@@ -1,5 +1,6 @@
 """The identification box of the PRISMA diagram groups the sources and names no database."""
 
+from palet import figstyle
 from palet.report import identification_lines, rq_figure_label, source_limitation
 
 
@@ -52,3 +53,9 @@ def test_source_limitation_mentions_the_export_only_when_there_is_one():
 def test_rq_figure_is_labelled_after_the_studies_it_counts():
     assert rq_figure_label("core_only") == "Studies synthesised"
     assert rq_figure_label("all_included").startswith("Included studies")
+
+
+def test_bars_of_the_descriptive_figures_are_grey():
+    for key in ("bar", "bar_light"):
+        colour = figstyle.PALETTE[key].lstrip("#")
+        assert colour[0:2] == colour[2:4] == colour[4:6]

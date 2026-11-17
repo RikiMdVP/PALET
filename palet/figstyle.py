@@ -13,6 +13,8 @@ PALETTE = {
     "primary": "#2C5F8A",      # dark blue
     "secondary": "#A9C4DE",    # light blue
     "accent": "#C8553D",       # brick red, for emphasis only
+    "bar": "#6E6E6E",          # grey bars of the descriptive figures (by question, by year)
+    "bar_light": "#C2C2C2",    # second category or incomplete year in those figures
     "ink": "#222222",
     "muted": "#6B6B6B",
     "box_main": "#EEF3F8",

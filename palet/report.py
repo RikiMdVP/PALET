@@ -267,9 +267,9 @@ def draw_included_by_rq(protocol: Protocol, assignments: list[RecordAssignment],
     partial = [0 if core_only else per_rq[rq]["partial"] for rq in rqs]
 
     fig, ax = plt.subplots(figsize=(figstyle.FIG_WIDTH, 0.42 * len(rqs) + 1.1))
-    ax.barh(rqs, core, color=palette["primary"], label="Core to the question", height=0.62)
+    ax.barh(rqs, core, color=palette["bar"], label="Core to the question", height=0.62)
     if not core_only:
-        ax.barh(rqs, partial, left=core, color=palette["secondary"], hatch="///", edgecolor="white",
+        ax.barh(rqs, partial, left=core, color=palette["bar_light"], hatch="///", edgecolor="white",
                 label="Partially relevant", height=0.62)
     for i, (c, p) in enumerate(zip(core, partial)):
         ax.text(c + p + max(core + partial + [1]) * 0.015, i, f"{c + p}", va="center", fontsize=9,
@@ -282,7 +282,8 @@ def draw_included_by_rq(protocol: Protocol, assignments: list[RecordAssignment],
     return figstyle.save(fig, path_without_extension)
 
 
-def draw_included_by_year(records: list[Record], path_without_extension, partial_year: int | None = None) -> list[str]:
+def draw_included_by_year(records: list[Record], path_without_extension, partial_year: int | None = None,
+                          ylabel: str = "Included studies") -> list[str]:
     figstyle.apply_style()
     palette = figstyle.PALETTE
     years = [r.year for r in records if r.year]
@@ -290,17 +291,17 @@ def draw_included_by_year(records: list[Record], path_without_extension, partial
     if years:
         span = list(range(min(years), max(years) + 1))
         counts = Counter(years)
-        bars = ax.bar(span, [counts.get(y, 0) for y in span], color=palette["primary"], width=0.72)
+        bars = ax.bar(span, [counts.get(y, 0) for y in span], color=palette["bar"], width=0.72)
         if partial_year in span:
             bar = bars[span.index(partial_year)]
-            bar.set_facecolor(palette["secondary"])
+            bar.set_facecolor(palette["bar_light"])
             bar.set_hatch("///")
             bar.set_edgecolor("white")
             ax.text(partial_year, counts.get(partial_year, 0) + max(counts.values()) * 0.03,
                     "partial\nyear", ha="center", va="bottom", fontsize=8, color=palette["muted"])
         ax.set_xticks(span)
         ax.set_ylim(0, max(counts.values()) * 1.22)
-    ax.set_ylabel("Included studies", labelpad=6)
+    ax.set_ylabel(ylabel, labelpad=6)
     ax.set_xlabel("Year of publication", labelpad=6)
     ax.yaxis.get_major_locator().set_params(integer=True)
     return figstyle.save(fig, path_without_extension)
@@ -692,7 +693,8 @@ def build_report(run: Run, protocol: Protocol, partial_year: int | None = None) 
         _write_csv(out_dir / "citations_by_rq.csv", header, rows)
         draw_included_by_rq(protocol, selected, out_dir / "fig_included_by_rq")
         draw_included_by_year([records[a.record_id] for a in selected], out_dir / "fig_included_by_year",
-                              partial_year=partial_year)
+                              partial_year=partial_year, ylabel=rq_figure_label(protocol.synthesis_selection)
+                              if protocol.synthesis_selection == "core_only" else "Included studies")
         written += ["report/table_included_by_rq.md", "report/evidence_table.csv", "report/citations_by_rq.csv",
                     "report/fig_included_by_rq.pdf", "report/fig_included_by_rq.png",
                     "report/fig_included_by_year.pdf", "report/fig_included_by_year.png"]
