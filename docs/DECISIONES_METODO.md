@@ -108,4 +108,9 @@ Decisiones de Ricardo (pendiente de que Fernando confirme la versión 2 del prot
   pendientes hasta volver a cribarlos (8 llamadas). Cifras actuales: 370 elegibles, 168 sintetizados, 4 pendientes;
   esperadas al cerrar, si las decisiones no cambian: 371 y 169 (el estudio que sale es el principal de RQ2 que solo
   aportaba Scopus).
+- **Cerrado el 17-nov**: Ricardo vuelve a cribar los 4 registros con el resumen de OpenAlex (8 llamadas, 0,16 $ con
+  la asignación). Salen como se esperaba. Cifras definitivas de `runs/isabel_chapter_v2`: 801 cribados por los dos
+  modelos, mismo resultado en 686 (85,6 %; kappa 0,77); 357 incluidos y 238 excluidos por acuerdo, 53 decididos por
+  los autores (14 incluidos, 39 excluidos), 153 excluidos sin acuerdo; **371 elegibles, 169 sintetizados**, 202
+  elegibles no sintetizados. Principales por pregunta: RQ1 40, RQ2 37, RQ3 5, RQ4 31, RQ5 4, RQ6 57, RQ7 7.
 

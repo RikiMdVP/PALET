@@ -18,7 +18,7 @@ nueva: cada afirmación debe estar respaldada por el estudio que se cita.
 ## 2. Corpus (ejecución `runs/isabel_chapter_v1`, protocolo `config/protocol_isabel_chapter_v2.yaml`)
 
 > **17-nov-2026**: Ricardo decide construir el corpus solo con OpenAlex. Ejecución vigente: `runs/isabel_chapter_v2`
-> (protocolo `config/protocol_isabel_chapter_v3.yaml`), provisional hasta volver a cribar 4 registros. Cifras y
+> (protocolo `config/protocol_isabel_chapter_v3.yaml`): 2.184 identificados, 1.893 únicos, 371 elegibles, 169 sintetizados. Cifras y
 > motivos en `docs/DECISIONES_METODO.md`, entrada del 17-nov. La tabla siguiente describe la ejecución anterior.
 
 | | Registros |
