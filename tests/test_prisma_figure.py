@@ -50,5 +50,5 @@ def test_source_limitation_mentions_the_export_only_when_there_is_one():
 
 
 def test_rq_figure_is_labelled_after_the_studies_it_counts():
-    assert rq_figure_label("core_only") == "Studies synthesised (a study may be core to more than one question)"
+    assert rq_figure_label("core_only") == "Studies synthesised"
     assert rq_figure_label("all_included").startswith("Included studies")

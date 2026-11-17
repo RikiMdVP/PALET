@@ -251,7 +251,7 @@ def draw_prisma(counts: dict, path_without_extension) -> list[str]:
 def rq_figure_label(selection_rule: str) -> str:
     """X-axis label of the figure by research question: it counts the studies that reach the synthesis."""
     if selection_rule == "core_only":
-        return "Studies synthesised (a study may be core to more than one question)"
+        return "Studies synthesised"          # the double counting is explained in the note of the figure
     return "Included studies (a study may address several questions)"
 
 
