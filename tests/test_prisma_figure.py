@@ -1,6 +1,6 @@
 """The identification box of the PRISMA diagram groups the sources and names no database."""
 
-from palet.report import identification_lines
+from palet.report import identification_lines, source_limitation
 
 
 def _counts():
@@ -30,10 +30,20 @@ def test_identification_lines_with_searches_only():
     counts["sources"] = counts["sources"][1:]
     counts["identified"] = 2184
     assert identification_lines(counts) == ["Records identified (n = 2184)",
-                                            "Supplementary searches, 2026 (n = 2184)"]
+                                            "Database searches, 2026 (n = 2184)"]
 
 
 def test_identification_lines_single_search_is_singular_and_undated_when_unknown():
     counts = {"identified": 7, "sources": [{"query_id": "q", "type": "openalex", "label": "x",
                                             "downloaded": 7, "executed_at": None}]}
-    assert identification_lines(counts) == ["Records identified (n = 7)", "Supplementary search (n = 7)"]
+    assert identification_lines(counts) == ["Records identified (n = 7)", "Database search (n = 7)"]
+
+
+def test_source_limitation_mentions_the_export_only_when_there_is_one():
+    with_export = source_limitation(_counts())
+    assert "export was not archived" in with_export and "Supplementary searches" in with_export
+    counts = _counts()
+    counts["sources"] = counts["sources"][1:]
+    searches_only = source_limitation(counts)
+    assert "Scopus" not in searches_only and "export" not in searches_only
+    assert searches_only.startswith("- Searches were run in one database (OpenAlex)")

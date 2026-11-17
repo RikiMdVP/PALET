@@ -131,9 +131,19 @@ def identification_lines(counts: dict) -> list[str]:
         lines.append(f"Database export{'s' if len(exports) > 1 else ''}{year_of(exports)} "
                      f"(n = {sum(s['downloaded'] or 0 for s in exports)})")
     if searches:
-        lines.append(f"Supplementary search{'es' if len(searches) > 1 else ''}{year_of(searches)} "
+        kind = "Supplementary" if exports else "Database"     # "supplementary" only next to an export
+        lines.append(f"{kind} search{'es' if len(searches) > 1 else ''}{year_of(searches)} "
                      f"(n = {sum(s['downloaded'] or 0 for s in searches)})")
     return lines
+
+
+def source_limitation(counts: dict) -> str:
+    """Limitation about the information sources, as a bullet of the methods appendix."""
+    searches = "earches were run in one database (OpenAlex), whose language and document-type metadata are imperfect."
+    if any(s.get("type") == "manual_import" and not s.get("query_string") for s in counts["sources"]):
+        return ("- The search string of the original Scopus export was not archived; coverage of that source "
+                "cannot be reproduced exactly. Supplementary s" + searches)
+    return "- S" + searches
 
 
 def draw_prisma(counts: dict, path_without_extension) -> list[str]:
@@ -170,7 +180,7 @@ def draw_prisma(counts: dict, path_without_extension) -> list[str]:
     # Identification
     id_lines = identification_lines(counts)
     id_text = "\n".join(id_lines)
-    id_h = 6 + 2.7 * (len(id_lines) - 1)
+    id_h = max(11.4, 6 + 2.7 * (len(id_lines) - 1))       # tall enough for the rotated stage label
     id_y = 97 - id_h
     box(left_x, id_y, left_w, id_h, id_text, palette["box_main"])
     removed = f"Records removed before screening\nDuplicates (n = {counts['duplicates_removed']})"
@@ -464,8 +474,10 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
     for s in counts["sources"]:
         out.append(f"| {s['label']} | {s['platform'] or ''} | {s['executed_at'] or ''} | "
                    f"{s['total_hits']} | {s['downloaded']}{' (truncated)' if s['truncated'] else ''} |")
-    out += ["", "The flow diagram groups these sources into database exports and supplementary searches "
-            "and names no database; refer to this table (or name the databases in a footnote) in its caption.", ""]
+    grouping = ("groups these sources into database exports and supplementary searches"
+                if any(s["type"] == "manual_import" for s in counts["sources"]) else "gives their total")
+    out += ["", f"The flow diagram {grouping} and names no database; refer to this table (or name the "
+            "databases in a footnote) in its caption.", ""]
     for s in counts["sources"]:
         out.append(f"**{s['label']}**")
         if s["query_string"]:
@@ -619,9 +631,7 @@ def methods_appendix(run: Run, protocol: Protocol, counts: dict, assignment_summ
             "apparent only in the full text may have been excluded, and charted contributions reflect "
             "what the abstract states.",
             "- Results depend on the model versions named above.",
-            "- The search string of the original Scopus export was not archived; coverage of that source "
-            "cannot be reproduced exactly. Supplementary searches were run in one database (OpenAlex), "
-            "whose language and document-type metadata are imperfect.", ""]
+            source_limitation(counts), ""]
     return "\n".join(out)
 
 
