@@ -92,3 +92,20 @@ Decisiones de Ricardo (pendiente de que Fernando confirme la versión 2 del prot
   apéndice de métodos y, en el capítulo, en el texto o en nota al pie. Objetivo: la figura más limpia posible.
 - **Síntesis por pregunta (Ricardo)**: no se fija un límite de palabras a priori por pregunta; cada una tiene el
   espacio necesario para que se entienda qué dice cada estudio principal sobre ella.
+
+## 2026-11-17 — El corpus se construye solo con las búsquedas de OpenAlex (protocolo v3)
+
+- **Decisión de Ricardo** (confirmación de Fernando pendiente): la exportación de Scopus de 2025 deja de ser fuente
+  de información. Motivos: su cadena de búsqueda no se archivó y, de sus 234 registros únicos, solo 2 llegaban a la
+  síntesis (uno de ellos también lo encuentra OpenAlex). Protocolo: `config/protocol_isabel_chapter_v3.yaml`
+  (idéntico al v2 salvo esa fuente). El v2 y `runs/isabel_chapter_v1` quedan intactos.
+- **Ejecución nueva `runs/isabel_chapter_v2`**: mismas descargas de OpenAlex del 12 y 13-nov y mismas 53 decisiones
+  de los autores, copiadas sin cambios; cribado y asignación reproducidos desde la caché (0 $).
+  2.184 identificados → 291 duplicados → 1.893 únicos; 1.003 fuera de las listas de revistas; 89 sin resumen
+  (uno más que antes: un registro solo tenía resumen en Scopus); 801 cribados por los dos modelos.
+- **Provisional**: 4 registros que también estaban en Scopus se habían cribado con el resumen de Scopus (difiere del
+  de OpenAlex en la línea de copyright). Con el texto de OpenAlex no hay respuesta en la caché y figuran como
+  pendientes hasta volver a cribarlos (8 llamadas). Cifras actuales: 370 elegibles, 168 sintetizados, 4 pendientes;
+  esperadas al cerrar, si las decisiones no cambian: 371 y 169 (el estudio que sale es el principal de RQ2 que solo
+  aportaba Scopus).
+
