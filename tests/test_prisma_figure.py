@@ -1,6 +1,6 @@
 """The identification box of the PRISMA diagram groups the sources and names no database."""
 
-from palet.report import identification_lines, source_limitation
+from palet.report import identification_lines, rq_figure_label, source_limitation
 
 
 def _counts():
@@ -47,3 +47,8 @@ def test_source_limitation_mentions_the_export_only_when_there_is_one():
     searches_only = source_limitation(counts)
     assert "Scopus" not in searches_only and "export" not in searches_only
     assert searches_only.startswith("- Searches were run in one database (OpenAlex)")
+
+
+def test_rq_figure_is_labelled_after_the_studies_it_counts():
+    assert rq_figure_label("core_only").startswith("Studies synthesised")
+    assert rq_figure_label("all_included").startswith("Included studies")

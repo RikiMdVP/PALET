@@ -248,7 +248,14 @@ def draw_prisma(counts: dict, path_without_extension) -> list[str]:
 
 # ── Figures ─────────────────────────────────────────────────────────────────
 
+def rq_figure_label(selection_rule: str) -> str:
+    """X-axis label of the figure by research question: it counts the studies that reach the synthesis."""
+    studies = "Studies synthesised" if selection_rule == "core_only" else "Included studies"
+    return f"{studies} (a study may address several questions)"
+
+
 def draw_included_by_rq(protocol: Protocol, assignments: list[RecordAssignment], path_without_extension) -> list[str]:
+    """Bars by research question for the given studies (the synthesised ones under ``core_only``)."""
     figstyle.apply_style()
     palette = figstyle.PALETTE
     per_rq = summarize(protocol, assignments)["per_rq"]
@@ -263,7 +270,7 @@ def draw_included_by_rq(protocol: Protocol, assignments: list[RecordAssignment],
     for i, (c, p) in enumerate(zip(core, partial)):
         ax.text(c + p + max(core + partial + [1]) * 0.015, i, f"{c + p}", va="center", fontsize=9,
                 color=palette["ink"])
-    ax.set_xlabel("Included studies (a study may address several questions)", labelpad=6)
+    ax.set_xlabel(rq_figure_label(protocol.synthesis_selection), labelpad=6)
     ax.xaxis.get_major_locator().set_params(integer=True)
     ax.tick_params(axis="y", length=0)
     ax.legend(frameon=False, loc="lower right", bbox_to_anchor=(1.0, 1.0), ncol=2, borderaxespad=0.2)
@@ -678,7 +685,7 @@ def build_report(run: Run, protocol: Protocol, partial_year: int | None = None) 
         _write_csv(out_dir / "evidence_table.csv", header, rows)
         header, rows = citations_by_rq(protocol, records, assignments)
         _write_csv(out_dir / "citations_by_rq.csv", header, rows)
-        draw_included_by_rq(protocol, assignments, out_dir / "fig_included_by_rq")
+        draw_included_by_rq(protocol, selected, out_dir / "fig_included_by_rq")
         draw_included_by_year([records[a.record_id] for a in selected], out_dir / "fig_included_by_year",
                               partial_year=partial_year)
         written += ["report/table_included_by_rq.md", "report/evidence_table.csv", "report/citations_by_rq.csv",
